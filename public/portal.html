@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TBOSE TUTORS</title>
+    <meta name="description" content="Access your Tbose Tutors student portal to download your pass, review your tuition ledger, read notices, and pay installment balances securely.">
+    
+    <!-- Favicon Links -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="shortcut icon" href="/favicon.png">
+    
+    <!-- Google Fonts: Manrope (Body) & Space Grotesk (Headers) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome Icons -->
+    <script src="https://kit.fontawesome.com/3b87da2304.js" crossorigin="anonymous"></script>
+    
+    <!-- Paystack Inline SDK -->
+    <script src="https://js.paystack.co/v1/inline.js"></script>
+
+    <!-- Local CSS styling -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="portal-page-body">
+
+    <!-- Glassmorphic Navbar -->
+    <nav class="navbar scrolled" id="main-nav">
+        <div class="nav-container">
+            <a href="/" class="logo">
+                <i class="fa-solid fa-graduation-cap gold-text"></i> TBOSE <span class="gold-text">TUTORS</span>
+            </a>
+            <div class="nav-links">
+                <a href="/" class="nav-link"><i class="fa-solid fa-house"></i> Home</a>
+            </div>
+            <a href="/" class="btn btn-ghost btn-sm" style="color: white; border-color: rgba(255, 255, 255, 0.4);">
+                <i class="fa-solid fa-arrow-left"></i> Back to Main Site
+            </a>
+        </div>
+    </nav>
+
+    <!-- Standalone Portal Hero / Container -->
+    <main class="portal-page-container">
+        <div class="portal-grid-overlay"></div>
+        <div class="portal-card-wrapper">
+            <!-- Header title inside card wrapper -->
+            <div class="portal-card-header text-center">
+                <h2>Student Portal</h2>
+                <div class="divider" style="margin: 10px auto 20px auto;"></div>
+            </div>
+
+            <!-- Search view -->
+            <div class="portal-search-box" id="portal-search-view">
+                <p class="text-center text-muted margin-bottom-md" style="margin-bottom: 24px; font-size: 0.95rem;">
+                    Enter your Ticket ID to verify your enrollment details, download your attendance pass, or settle outstanding tuition balances.
+                </p>
+                <div class="search-form-group" style="width: 100%;">
+                    <div class="input-wrapper" style="flex-grow: 1;">
+                        <i class="fa-solid fa-ticket input-icon"></i>
+                        <input type="text" id="portal-search-input" placeholder="e.g. TKT-102938" required style="width: 100%;">
+                    </div>
+                    <button class="btn btn-gold" id="portal-search-submit" style="white-space: nowrap; margin-left: 10px;">
+                        Access Portal <i class="fa-solid fa-right-to-bracket"></i>
+                    </button>
+                </div>
+                <span class="error-msg text-center margin-top-sm" id="portal-search-error" style="margin-top: 15px; font-weight: 500;"></span>
+            </div>
+
+            <!-- Dashboard view (hidden by default) -->
+            <div class="portal-dashboard" id="portal-dashboard-view" style="display: none;">
+                <div class="portal-user-header">
+                    <div class="user-avatar" id="portal-user-avatar">AO</div>
+                    <div class="user-meta" style="margin-left: 15px;">
+                        <h3 id="portal-user-name">Adaeze Obi</h3>
+                        <p id="portal-user-phone-email" class="text-muted text-sm">08012345678 · adaeze@example.com</p>
+                    </div>
+                    <span class="attendance-badge" id="portal-user-mode">PHYSICAL</span>
+                </div>
+
+                <!-- Portal Sub Navigation Tabs -->
+                <ul class="portal-nav-tabs">
+                    <li class="portal-tab active" data-tab="ledger">
+                        <i class="fa-solid fa-money-check-dollar"></i> Tuition Ledger
+                    </li>
+                    <li class="portal-tab" data-tab="downloads">
+                        <i class="fa-solid fa-cloud-arrow-down"></i> Study Resources
+                    </li>
+                    <li class="portal-tab" data-tab="notices">
+                        <i class="fa-solid fa-bullhorn"></i> Notice Board
+                    </li>
+                </ul>
+
+                <!-- TAB 1: Ledger -->
+                <div class="portal-panel active" id="portal-panel-ledger">
+                    <div class="portal-payments-list">
+                        <h4 style="margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; color: var(--primary-color);">
+                            Your Tuition Ledger
+                        </h4>
+                        <div class="ledger-table" id="portal-ledger">
+                            <!-- Populated dynamically via JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 2: Study Resources -->
+                <div class="portal-panel" id="portal-panel-downloads" style="display: none;">
+                    <div class="portal-resources-list-container">
+                        <h4 style="margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; color: var(--primary-color);">
+                            Published Class Resources
+                        </h4>
+                        <div class="portal-resources-grid" id="portal-resources-list">
+                            <!-- Populated dynamically via JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TAB 3: Notice Board -->
+                <div class="portal-panel" id="portal-panel-notices" style="display: none;">
+                    <div class="portal-resources-list-container">
+                        <h4 style="margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; color: var(--primary-color);">
+                            Class Announcements
+                        </h4>
+                        <div class="portal-notices-container" id="portal-notices-list">
+                            <!-- Populated dynamically via JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="portal-actions" style="margin-top: 25px; display: flex; justify-content: space-between; align-items: center; gap: 15px;">
+                    <button class="btn btn-ghost" id="portal-exit-btn">
+                        <i class="fa-solid fa-arrow-left-long"></i> Exit Portal
+                    </button>
+                    <button class="btn btn-gold" id="portal-download-ticket-btn" style="display: none;">
+                        <i class="fa-solid fa-download"></i> Download Pass
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Clean Portal Footer -->
+    <footer class="portal-footer">
+        <p>&copy; 2026 Tbose Tutors. Secured Checkout processed by Paystack.</p>
+        <p style="font-size: 0.8rem; margin-top: 5px; opacity: 0.6;">
+            Need help? Contact <a href="mailto:info@tbosetutors.com" style="text-decoration: underline;">info@tbosetutors.com</a> or message support.
+        </p>
+    </footer>
+
+    <!-- Portal UI Script -->
+    <script src="portal.js"></script>
+</body>
+</html>

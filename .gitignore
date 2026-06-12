@@ -1,0 +1,33 @@
+# Dependency directories
+node_modules/
+jspm_packages/
+
+# Environment configurations & credentials
+.env
+.env.local
+.env.*.local
+*.json
+!package.json
+!package-lock.json
+!vercel.json
+!db_*_mock.json.example
+
+# Temporary database mock stores (local simulation mode)
+db_mock.json
+db_resources_mock.json
+db_announcements_mock.json
+
+# Local file downloads & uploads
+tickets/*.pdf
+public/uploads/*
+!public/uploads/.gitkeep
+
+# IDEs and Editors
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
