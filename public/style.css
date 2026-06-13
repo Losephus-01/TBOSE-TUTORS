@@ -2378,4 +2378,48 @@ table.db-table {
         width: 100%;
         justify-content: center;
     }
+    
+    /* Hide Control Panel text on small admin portal viewports */
+    .logo-sub {
+        display: none !important;
+    }
+    
+    /* Hide 'Back to Main Site' text and leave only the back arrow icon */
+    .nav-back-btn .btn-text {
+        display: none !important;
+    }
+    .nav-back-btn {
+        padding: 8px 12px !important;
+        border-radius: var(--border-radius-sm) !important;
+    }
+    
+    /* Hide inline Home links in portal/admin navbar to save screen space */
+    .portal-page-body .nav-links,
+    .admin-page-body .nav-links {
+        display: none !important;
+    }
+}
+
+@media (max-width: 360px) {
+    /* Tighten padding and gaps on very small mobile devices (e.g., iPhone SE) */
+    .portal-card-wrapper {
+        padding: 16px !important;
+    }
+    
+    .portal-user-header {
+        gap: 8px !important;
+    }
+    
+    .portal-nav-tabs {
+        gap: 8px !important;
+    }
+    
+    .portal-tab {
+        font-size: 0.76rem !important;
+        gap: 2px !important;
+    }
+    
+    .resource-card-item {
+        padding: 16px 12px !important;
+    }
 }
