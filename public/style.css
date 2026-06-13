@@ -2126,3 +2126,256 @@ table.db-table {
     color: var(--text-color);
     white-space: pre-wrap;
 }
+
+/* ==========================================================================
+   19. MOBILE & TABLET RESPONSIVENESS OVERRIDES
+   ========================================================================== */
+
+/* --- MOBILE NAVIGATION DRAW R --- */
+.nav-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.nav-hamburger {
+    display: none;
+    background: none;
+    border: none;
+    color: #ffffff;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 6px;
+    transition: var(--transition-fast);
+}
+
+.nav-hamburger:hover {
+    color: var(--accent-color);
+}
+
+.navbar.scrolled .nav-hamburger {
+    color: var(--primary-color);
+}
+
+@media (max-width: 768px) {
+    .nav-hamburger {
+        display: block;
+    }
+    
+    .nav-links {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background-color: rgba(16, 20, 92, 0.98);
+        backdrop-filter: blur(15px);
+        -webkit-backdrop-filter: blur(15px);
+        flex-direction: column;
+        padding: 24px;
+        gap: 18px;
+        border-bottom: 2px solid rgba(0, 174, 239, 0.2);
+        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);
+        text-align: center;
+        z-index: 1000;
+        opacity: 0;
+        transform: translateY(-10px);
+        pointer-events: none;
+        transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+    
+    .nav-links.active {
+        display: flex;
+        opacity: 1;
+        transform: translateY(0);
+        pointer-events: auto;
+    }
+    
+    .nav-link {
+        font-size: 1.1rem;
+        padding: 10px 0;
+        width: 100%;
+        display: block;
+    }
+}
+
+/* --- STUDENT PORTAL MOBILE TWEAKS --- */
+@media (max-width: 600px) {
+    /* Stacking input and button in portal search view */
+    .portal-search-box .search-form-group {
+        flex-direction: column !important;
+        gap: 12px;
+    }
+    .portal-search-box .search-form-group .input-wrapper {
+        width: 100%;
+    }
+    .portal-search-box .search-form-group #portal-search-submit {
+        margin-left: 0 !important;
+        width: 100%;
+        justify-content: center;
+        min-height: 48px;
+    }
+    
+    /* Portal Header stack on mobile */
+    .portal-user-header {
+        flex-direction: column;
+        text-align: center;
+        gap: 16px;
+        padding-bottom: 24px;
+        align-items: center;
+    }
+    .portal-user-header .user-meta {
+        margin-left: 0 !important;
+    }
+    .portal-user-header .attendance-badge {
+        margin-left: 0;
+        align-self: center;
+    }
+    
+    /* Tabs font sizing and spacing */
+    .portal-nav-tabs {
+        gap: 12px !important;
+        justify-content: space-between;
+    }
+    .portal-tab {
+        font-size: 0.82rem !important;
+        padding: 10px 0 !important;
+        gap: 4px !important;
+        flex-grow: 1;
+        justify-content: center;
+    }
+    
+    /* Resource item column structure */
+    .portal-resources-grid {
+        grid-template-columns: 1fr !important;
+    }
+    .resource-card-item {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 16px;
+        padding: 24px 20px;
+    }
+    .resource-card-details h5 {
+        font-size: 1rem;
+    }
+    .resource-card-item a.btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    /* Stacking actions block */
+    .portal-actions {
+        flex-direction: column;
+        gap: 12px;
+        width: 100%;
+    }
+    .portal-actions button {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* --- ADMIN PANEL MOBILE TWEAKS --- */
+@media (max-width: 768px) {
+    body.admin-page-body {
+        height: auto !important;
+        overflow: auto !important;
+    }
+    
+    .admin-dashboard-layout {
+        flex-direction: column !important;
+        height: auto !important;
+        overflow: visible !important;
+        margin-top: var(--nav-height);
+    }
+    
+    .admin-main-content {
+        height: auto !important;
+        overflow: visible !important;
+        padding: 24px 16px !important;
+    }
+    
+    /* Horizontal scrollable sidebar tabs */
+    .admin-sidebar {
+        width: 100% !important;
+        padding: 16px !important;
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 16px !important;
+        border-right: none !important;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    }
+    
+    .admin-user-profile {
+        border-bottom: none !important;
+        padding-bottom: 0 !important;
+        justify-content: center !important;
+    }
+    
+    .admin-nav-tabs {
+        flex-direction: row !important;
+        overflow-x: auto !important;
+        white-space: nowrap !important;
+        width: 100% !important;
+        padding-bottom: 8px !important;
+        gap: 12px !important;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .admin-tab {
+        flex: 0 0 auto !important;
+        padding: 10px 16px !important;
+        font-size: 0.85rem !important;
+        justify-content: center;
+    }
+    
+    /* Stretches filters to full-width */
+    .filters-bar {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 12px !important;
+        width: 100%;
+    }
+    
+    .filters-bar .input-wrapper,
+    .filters-bar .select-wrapper,
+    .filters-bar .select-wrapper select {
+        max-width: 100% !important;
+        width: 100% !important;
+    }
+    
+    /* Stacks upload grid cards */
+    .resources-grid {
+        grid-template-columns: 1fr !important;
+        gap: 24px !important;
+    }
+    
+    .upload-form-card, 
+    .resources-list-card {
+        padding: 24px 16px !important;
+    }
+    
+    /* Clean details modal positioning on smaller viewports */
+    .modal-card {
+        margin: 20px auto;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+}
+
+@media (max-width: 480px) {
+    /* Smaller headers for tiny phones */
+    .panel-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    .panel-header h2 {
+        font-size: 1.4rem;
+    }
+    .panel-header .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}

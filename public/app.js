@@ -419,6 +419,44 @@ document.addEventListener('DOMContentLoaded', () => {
         );
     });
 
+    // 8. Mobile Hamburger Menu Toggle
+    const hamburgerBtn = document.getElementById('nav-hamburger-btn');
+    const navLinksMenu = document.getElementById('nav-links-menu');
+    
+    if (hamburgerBtn && navLinksMenu) {
+        hamburgerBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            navLinksMenu.classList.toggle('active');
+            
+            // Toggle icon
+            const icon = hamburgerBtn.querySelector('i');
+            if (navLinksMenu.classList.contains('active')) {
+                icon.className = 'fa-solid fa-xmark';
+            } else {
+                icon.className = 'fa-solid fa-bars';
+            }
+        });
+
+        // Close menu when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!navLinksMenu.contains(e.target) && !hamburgerBtn.contains(e.target)) {
+                if (navLinksMenu.classList.contains('active')) {
+                    navLinksMenu.classList.remove('active');
+                    hamburgerBtn.querySelector('i').className = 'fa-solid fa-bars';
+                }
+            }
+        });
+        
+        // Close menu when clicking any nav link
+        const navLinks = navLinksMenu.querySelectorAll('.nav-link');
+        navLinks.forEach(link => {
+            link.addEventListener('click', () => {
+                navLinksMenu.classList.remove('active');
+                hamburgerBtn.querySelector('i').className = 'fa-solid fa-bars';
+            });
+        });
+    }
+
     // Student Portal logic has been moved to portal.js for code cleanliness and page speed.
 
     // 9. Event Tracking Helper (Google Analytics Mock)
