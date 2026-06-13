@@ -333,90 +333,78 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    paySubmitBtn.addEventListener('click', () => {
+    paySubmitBtn.addEventListener('click', async () => {
         const email = inputEmail.value.trim();
         const amount = selectedPaymentPlan === 'full' ? 25000 : 12500;
 
-        trackEvent('Initiated Paystack Checkout', { plan: selectedPaymentPlan, amount });
+        trackEvent('Direct Registration Triggered (Bypassing Paystack)', { plan: selectedPaymentPlan, amount });
 
         // Show visual loading state on the button
         paySubmitBtn.disabled = true;
         paySubmitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
 
-        // Launch checkout
-        initPaystackPayment(
-            email,
-            amount,
-            async function(response) {
-                // Payment success: call backend verify
-                step2View.classList.remove('active');
-                step3Loading.classList.add('active');
-                progressSteps[1].className = 'step-num completed';
+        // Transition steps to loading view
+        step2View.classList.remove('active');
+        step3Loading.classList.add('active');
+        progressSteps[1].className = 'step-num completed';
 
-                try {
-                    const res = await fetch('/api/verify-payment', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            reference: response.reference,
-                            email,
-                            fullName: inputName.value.trim(),
-                            phone: inputPhone.value.trim(),
-                            attendanceMode: inputMode.value,
-                            paymentPlan: selectedPaymentPlan
-                        })
-                    });
+        try {
+            const res = await fetch('/api/verify-payment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    reference: 'mock_ref_direct_' + Date.now(),
+                    email,
+                    fullName: inputName.value.trim(),
+                    phone: inputPhone.value.trim(),
+                    attendanceMode: inputMode.value,
+                    paymentPlan: selectedPaymentPlan
+                })
+            });
 
-                    const data = await res.json();
-                    
-                    step3Loading.classList.remove('active');
-                    if (res.ok && data.success) {
-                        step4Success.classList.add('active');
-                        if (successTicketId) successTicketId.textContent = data.ticketId;
-                        
-                        // Set download URL
-                        if (downloadBtn) {
-                            downloadBtn.onclick = () => {
-                                window.location.href = data.downloadUrl;
-                            };
-                        }
+            const data = await res.json();
+            
+            step3Loading.classList.remove('active');
+            if (res.ok && data.success) {
+                step4Success.classList.add('active');
+                if (successTicketId) successTicketId.textContent = data.ticketId;
+                
+                // Set download URL
+                if (downloadBtn) {
+                    downloadBtn.onclick = () => {
+                        window.location.href = data.downloadUrl;
+                    };
+                }
 
-                        // Configure WhatsApp redirects
-                        const mode = data.attendanceMode;
-                        if (waShareBtn) {
-                            if (mode === 'online') {
-                                if (data.balance === 0) {
-                                    waShareBtn.href = 'https://chat.whatsapp.com/mockGroupInviteTbosetutors';
-                                    waShareBtn.innerHTML = '<i class="fa-brands fa-whatsapp"></i> Enter WhatsApp Class Group';
-                                } else {
-                                    const text = `Hi Mr. Tunde! I have registered for Online Post-UTME classes with Part Payment. My Ticket ID is ${data.ticketId}. Please verify and send the schedule.`;
-                                    waShareBtn.href = `https://wa.me/2348123456789?text=${encodeURIComponent(text)}`;
-                                    waShareBtn.innerHTML = '<i class="fa-brands fa-whatsapp"></i> Chat Admin to Join Class';
-                                }
-                            } else {
-                                const text = `Hi Mr. Tunde! I have registered for Physical Post-UTME classes in Ibadan. My Ticket ID is ${data.ticketId}.`;
-                                waShareBtn.href = `https://wa.me/2348123456789?text=${encodeURIComponent(text)}`;
-                                waShareBtn.innerHTML = '<i class="fa-brands fa-whatsapp"></i> Message Admin on WhatsApp';
-                            }
+                // Configure WhatsApp redirects
+                const mode = data.attendanceMode;
+                if (waShareBtn) {
+                    if (mode === 'online') {
+                        if (data.balance === 0) {
+                            waShareBtn.href = 'https://chat.whatsapp.com/mockGroupInviteTbosetutors';
+                            waShareBtn.innerHTML = '<i class="fa-brands fa-whatsapp"></i> Enter WhatsApp Class Group';
+                        } else {
+                            const text = `Hi Mr. Tunde! I have registered for Online Post-UTME classes with Part Payment. My Ticket ID is ${data.ticketId}. Please verify and send the schedule.`;
+                            waShareBtn.href = `https://wa.me/2348123456789?text=${encodeURIComponent(text)}`;
+                            waShareBtn.innerHTML = '<i class="fa-brands fa-whatsapp"></i> Chat Admin to Join Class';
                         }
                     } else {
-                        alert(`Verification Error: ${data.error || 'Unknown error occurred.'}`);
-                        resetModal();
-                        closeModal();
+                        const text = `Hi Mr. Tunde! I have registered for Physical Post-UTME classes in Ibadan. My Ticket ID is ${data.ticketId}.`;
+                        waShareBtn.href = `https://wa.me/2348123456789?text=${encodeURIComponent(text)}`;
+                        waShareBtn.innerHTML = '<i class="fa-brands fa-whatsapp"></i> Message Admin on WhatsApp';
                     }
-                } catch (err) {
-                    console.error(err);
-                    alert('Server connection error verifying transaction.');
-                    resetModal();
-                    closeModal();
                 }
-            },
-            function() {
-                trackEvent('Paystack Checkout Closed');
-                paySubmitBtn.disabled = false;
-                paySubmitBtn.innerHTML = 'Proceed to Payment <i class="fa-solid fa-credit-card"></i>';
+            } else {
+                alert(`Verification Error: ${data.error || 'Unknown error occurred.'}`);
+                resetModal();
+                closeModal();
             }
-        );
+        } catch (err) {
+            console.error(err);
+            alert('Server connection error verifying transaction.');
+            resetModal();
+            closeModal();
+        }
     });
 
     // 8. Mobile Hamburger Menu Toggle

@@ -141,7 +141,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Bind click listeners for ledger payment buttons
             document.querySelectorAll('.pay-sub-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
+                btn.addEventListener('click', async (e) => {
                     const monthKey = e.target.getAttribute('data-month');
                     const paymentPlan = e.target.getAttribute('data-plan');
                     const amount = parseInt(e.target.getAttribute('data-amount'), 10);
@@ -150,46 +150,34 @@ document.addEventListener('DOMContentLoaded', () => {
                     btn.disabled = true;
                     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processing...';
 
-                    // Launch Paystack payment flow for balance or month renewal
-                    initPaystackPayment(
-                        data.email,
-                        amount,
-                        async function(response) {
-                            // On payment success: verify balance payout
-                            try {
-                                const verifyRes = await fetch('/api/pay-balance', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({
-                                        reference: response.reference,
-                                        ticketId,
-                                        monthKey,
-                                        paymentPlan
-                                    })
-                                });
+                    // Direct backend verify balance payout (bypassing Paystack)
+                    try {
+                        const verifyRes = await fetch('/api/pay-balance', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                reference: 'mock_ref_portal_' + Date.now(),
+                                ticketId,
+                                monthKey,
+                                paymentPlan
+                            })
+                        });
 
-                                const verifyData = await verifyRes.json();
-                                if (verifyRes.ok && verifyData.success) {
-                                    alert('Tuition payment verified successfully! Your pass has been updated.');
-                                    loadPortalDashboard(ticketId); // Refresh dashboard view
-                                } else {
-                                    alert(`Verification failed: ${verifyData.error || 'Server error.'}`);
-                                    btn.disabled = false;
-                                    btn.innerHTML = originalText;
-                                }
-                            } catch (err) {
-                                console.error(err);
-                                alert('Error contacting server to verify balance transaction.');
-                                btn.disabled = false;
-                                btn.innerHTML = originalText;
-                            }
-                        },
-                        function() {
-                            console.log('Balance checkout closed.');
+                        const verifyData = await verifyRes.json();
+                        if (verifyRes.ok && verifyData.success) {
+                            alert('Tuition payment verified successfully! Your pass has been updated.');
+                            loadPortalDashboard(ticketId); // Refresh dashboard view
+                        } else {
+                            alert(`Verification failed: ${verifyData.error || 'Server error.'}`);
                             btn.disabled = false;
                             btn.innerHTML = originalText;
                         }
-                    );
+                    } catch (err) {
+                        console.error(err);
+                        alert('Error contacting server to verify balance transaction.');
+                        btn.disabled = false;
+                        btn.innerHTML = originalText;
+                    }
                 });
             });
 
