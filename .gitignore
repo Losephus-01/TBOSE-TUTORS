@@ -6,6 +6,7 @@ jspm_packages/
 .env
 .env.local
 .env.*.local
+seed_firebase.js
 *.json
 !package.json
 !package-lock.json
