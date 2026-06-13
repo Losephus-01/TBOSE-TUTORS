@@ -28,12 +28,14 @@
             <a href="/" class="logo">
                 <i class="fa-solid fa-graduation-cap gold-text"></i> TBOSE <span class="gold-text">TUTORS</span> <span class="logo-sub" style="font-size: 0.95rem; font-weight: normal; opacity: 0.6; margin-left: 5px;">| Control Panel</span>
             </a>
-            <div class="nav-links">
-                <a href="/" class="nav-link"><i class="fa-solid fa-house"></i> Home</a>
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <a href="/" class="btn btn-ghost btn-sm nav-back-btn" style="color: white; border-color: rgba(255, 255, 255, 0.4);">
+                    <i class="fa-solid fa-arrow-left"></i> <span class="btn-text">Back to Main Site</span>
+                </a>
+                <button class="btn btn-ghost btn-sm" id="admin-logout-btn" style="display: none; color: white; border-color: rgba(255, 255, 255, 0.4);">
+                    Logout <i class="fa-solid fa-right-from-bracket"></i>
+                </button>
             </div>
-            <button class="btn btn-ghost btn-sm" id="admin-logout-btn" style="display: none; color: white; border-color: rgba(255, 255, 255, 0.4);">
-                Logout <i class="fa-solid fa-right-from-bracket"></i>
-            </button>
         </div>
     </nav>
 

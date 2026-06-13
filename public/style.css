@@ -2201,19 +2201,20 @@ table.db-table {
 
 /* --- STUDENT PORTAL MOBILE TWEAKS --- */
 @media (max-width: 600px) {
-    /* Stacking input and button in portal search view */
-    .portal-search-box .search-form-group {
+    /* Stacking input and button in search form groups */
+    .search-form-group {
         flex-direction: column !important;
-        gap: 12px;
+        gap: 12px !important;
     }
-    .portal-search-box .search-form-group .input-wrapper {
-        width: 100%;
+    .search-form-group .input-wrapper {
+        width: 100% !important;
     }
-    .portal-search-box .search-form-group #portal-search-submit {
+    .search-form-group button,
+    .search-form-group .btn {
         margin-left: 0 !important;
-        width: 100%;
-        justify-content: center;
-        min-height: 48px;
+        width: 100% !important;
+        justify-content: center !important;
+        min-height: 48px !important;
     }
     
     /* Portal Header stack on mobile */
@@ -2362,6 +2363,11 @@ table.db-table {
         max-height: 90vh;
         overflow-y: auto;
     }
+    
+    /* Enforce horizontal scrolling on sub-panel resource and notice tables */
+    .admin-resources-table-container table.db-table {
+        min-width: 650px !important;
+    }
 }
 
 @media (max-width: 480px) {
@@ -2397,6 +2403,14 @@ table.db-table {
     .portal-page-body .nav-links,
     .admin-page-body .nav-links {
         display: none !important;
+    }
+    
+    /* Lockscreen card overrides for tight viewports */
+    .admin-login-container {
+        padding: 80px 16px 40px 16px !important;
+    }
+    .admin-login-card {
+        padding: 24px 16px !important;
     }
 }
 
