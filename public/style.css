@@ -2437,3 +2437,22 @@ table.db-table {
         padding: 16px 12px !important;
     }
 }
+
+/* --- MOBILE NAVBAR TWEAKS (SCREENS <= 512px) --- */
+@media (max-width: 512px) {
+    /* Hide the Register Now CTA in the navbar */
+    #nav-register-btn {
+        display: none !important;
+    }
+    
+    /* Make the logo word mark significantly smaller */
+    .logo {
+        font-size: 0.95rem !important;
+        gap: 6px !important;
+    }
+    
+    .logo i {
+        font-size: 1.1rem !important;
+    }
+}
+
