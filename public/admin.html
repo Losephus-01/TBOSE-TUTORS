@@ -35,6 +35,9 @@
                 <button class="btn btn-ghost btn-sm" id="admin-logout-btn" style="display: none; color: white; border-color: rgba(255, 255, 255, 0.4);">
                     Logout <i class="fa-solid fa-right-from-bracket"></i>
                 </button>
+                <button class="nav-hamburger" id="admin-hamburger-btn" aria-label="Toggle Sidebar Menu" style="display: none; color: white; background: none; border: none; font-size: 1.5rem; cursor: pointer; padding: 6px;">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
             </div>
         </div>
     </nav>
@@ -66,7 +69,10 @@
     <!-- Admin Dashboard Main Layout (hidden by default) -->
     <div class="admin-dashboard-layout" id="admin-dashboard-view" style="display: none;">
         <!-- Left Sidebar Navigation -->
-        <aside class="admin-sidebar">
+        <aside class="admin-sidebar" id="admin-sidebar-menu">
+            <button class="sidebar-close-btn" id="sidebar-close-btn" aria-label="Close Menu">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
             <div class="admin-user-profile">
                 <div class="admin-avatar"><i class="fa-solid fa-user-gear"></i></div>
                 <div class="admin-user-info">
@@ -88,6 +94,14 @@
                     <i class="fa-solid fa-bullhorn"></i> Announcements
                 </li>
             </ul>
+            <div class="admin-sidebar-actions">
+                <button class="btn btn-gold btn-full btn-sm" id="sidebar-export-csv-btn">
+                    <i class="fa-solid fa-file-csv"></i> Export CSV Roster
+                </button>
+                <button class="btn btn-ghost btn-full btn-sm" id="sidebar-logout-btn" style="color: white; border-color: rgba(255, 255, 255, 0.3);">
+                    Logout <i class="fa-solid fa-right-from-bracket"></i>
+                </button>
+            </div>
         </aside>
 
         <!-- Right Panel Content -->
