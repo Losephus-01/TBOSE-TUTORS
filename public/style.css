@@ -2454,5 +2454,16 @@ table.db-table {
     .logo i {
         font-size: 1.1rem !important;
     }
+    
+    /* Reduce hero action buttons size and allow wrap */
+    .hero-ctas {
+        flex-wrap: wrap !important;
+        gap: 12px !important;
+    }
+    
+    .hero-ctas .btn-large {
+        padding: 12px 20px !important;
+        font-size: 0.9rem !important;
+    }
 }
 
