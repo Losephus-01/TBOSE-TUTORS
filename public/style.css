@@ -2528,5 +2528,65 @@ table.db-table {
     .resource-card-item {
         padding: 16px 12px !important;
     }
+    
+    /* --- ADMIN PANEL RESPONSIVENESS (SCREENS <= 512px) --- */
+    
+    /* Hide admin logo control panel label */
+    .logo-sub {
+        display: none !important;
+    }
+    
+    /* Compact admin page padding */
+    .admin-main-content {
+        padding: 16px 12px !important;
+    }
+    
+    /* Compact user profile in sidebar */
+    .admin-user-profile {
+        gap: 10px !important;
+        padding: 0 !important;
+        justify-content: center !important;
+    }
+    .admin-avatar {
+        width: 36px !important;
+        height: 36px !important;
+        font-size: 1rem !important;
+    }
+    .admin-user-info h4 {
+        font-size: 0.85rem !important;
+    }
+    .admin-user-info span {
+        font-size: 0.7rem !important;
+    }
+    
+    /* Panel headers collapse */
+    .panel-header {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 12px !important;
+    }
+    .panel-header h2 {
+        font-size: 1.35rem !important;
+    }
+    .panel-header .btn {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+    
+    /* Compact cards padding in admin dashboards */
+    .upload-form-card, 
+    .resources-list-card,
+    .scanner-search-box,
+    .scanner-results-card {
+        padding: 20px 12px !important;
+    }
+    
+    /* Compact dropzone area */
+    .file-dropzone {
+        padding: 16px 10px !important;
+    }
+    .file-dropzone p {
+        font-size: 0.85rem !important;
+    }
 }
 
