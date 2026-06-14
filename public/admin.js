@@ -8,11 +8,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const loginSubmit = document.getElementById('admin-login-submit');
     const loginError = document.getElementById('login-error');
     const logoutBtn = document.getElementById('admin-logout-btn');
-    const sidebarExportCsvBtn = document.getElementById('sidebar-export-csv-btn');
-    const sidebarLogoutBtn = document.getElementById('sidebar-logout-btn');
-    const adminHamburgerBtn = document.getElementById('admin-hamburger-btn');
-    const sidebarCloseBtn = document.getElementById('sidebar-close-btn');
-    const adminSidebarMenu = document.getElementById('admin-sidebar-menu');
 
     // Sidebar navigation
     const tabs = document.querySelectorAll('.admin-tab');
@@ -86,21 +81,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    function logoutAdmin() {
+    logoutBtn.addEventListener('click', () => {
         sessionStorage.removeItem('adminPass');
         adminPassword = '';
         dashboardView.style.display = 'none';
         logoutBtn.style.display = 'none';
-        if (adminHamburgerBtn) adminHamburgerBtn.style.display = 'none';
-        if (adminSidebarMenu) adminSidebarMenu.classList.remove('active');
         loginView.style.display = 'flex';
         passwordInput.value = '';
-    }
-
-    logoutBtn.addEventListener('click', logoutAdmin);
-    if (sidebarLogoutBtn) {
-        sidebarLogoutBtn.addEventListener('click', logoutAdmin);
-    }
+    });
 
     async function verifyAndLoadDashboard() {
         loginError.style.display = 'none';
@@ -126,7 +114,6 @@ document.addEventListener('DOMContentLoaded', () => {
             loginView.style.display = 'none';
             dashboardView.style.display = 'flex';
             logoutBtn.style.display = 'block';
-            if (adminHamburgerBtn) adminHamburgerBtn.style.display = 'block';
 
             // Load panel data
             renderAttendeesTable(cachedAttendees);
@@ -143,10 +130,6 @@ document.addEventListener('DOMContentLoaded', () => {
     tabs.forEach(tab => {
         tab.addEventListener('click', () => {
             const targetTab = tab.getAttribute('data-tab');
-            
-            if (adminSidebarMenu) {
-                adminSidebarMenu.classList.remove('active');
-            }
             
             tabs.forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
@@ -230,7 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
     filterPlanSelect.addEventListener('change', applyFilters);
 
     // CSV Roster Export
-    function exportCsv() {
+    exportCsvBtn.addEventListener('click', () => {
         if (cachedAttendees.length === 0) {
             alert('No records available to export.');
             return;
@@ -260,37 +243,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-    }
-
-    exportCsvBtn.addEventListener('click', exportCsv);
-    if (sidebarExportCsvBtn) {
-        sidebarExportCsvBtn.addEventListener('click', () => {
-            exportCsv();
-            adminSidebarMenu.classList.remove('active');
-        });
-    }
-
-    // Mobile Sidebar Drawer Actions
-    if (adminHamburgerBtn) {
-        adminHamburgerBtn.addEventListener('click', () => {
-            adminSidebarMenu.classList.add('active');
-        });
-    }
-
-    if (sidebarCloseBtn) {
-        sidebarCloseBtn.addEventListener('click', () => {
-            adminSidebarMenu.classList.remove('active');
-        });
-    }
-
-    // Close menu when clicking outside of it
-    document.addEventListener('click', (e) => {
-        if (adminSidebarMenu && 
-            adminSidebarMenu.classList.contains('active') && 
-            !adminSidebarMenu.contains(e.target) && 
-            !adminHamburgerBtn.contains(e.target)) {
-            adminSidebarMenu.classList.remove('active');
-        }
     });
 
     // 5. Gate Entrance Code Verification
