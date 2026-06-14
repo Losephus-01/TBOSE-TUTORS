@@ -35,7 +35,37 @@
                 <button class="btn btn-ghost btn-sm" id="admin-logout-btn" style="display: none; color: white; border-color: rgba(255, 255, 255, 0.4);">
                     Logout <i class="fa-solid fa-right-from-bracket"></i>
                 </button>
+                <!-- Hamburger button for mobile admin (screens < 512px) -->
+                <button class="nav-hamburger" id="admin-hamburger-btn" style="display: none;" aria-label="Toggle Navigation">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
             </div>
+        </div>
+        
+        <!-- Mobile admin dropdown menu -->
+        <div class="admin-mobile-menu" id="admin-mobile-menu">
+            <ul class="admin-mobile-nav-tabs">
+                <li class="admin-tab active" data-tab="registrants">
+                    <i class="fa-solid fa-users"></i> Registrants Database
+                </li>
+                <li class="admin-tab" data-tab="scanner">
+                    <i class="fa-solid fa-clipboard-check"></i> Gate Verification
+                </li>
+                <li class="admin-tab" data-tab="resources">
+                    <i class="fa-solid fa-file-arrow-up"></i> Study Resources
+                </li>
+                <li class="admin-tab" data-tab="messaging">
+                    <i class="fa-solid fa-bullhorn"></i> Announcements
+                </li>
+                <li class="admin-mobile-back">
+                    <a href="/" style="color: inherit; display: flex; align-items: center; gap: 12px; width: 100%;">
+                        <i class="fa-solid fa-arrow-left"></i> Back to Main Site
+                    </a>
+                </li>
+                <li class="admin-mobile-logout" id="admin-mobile-logout-btn">
+                    <i class="fa-solid fa-right-from-bracket"></i> Logout
+                </li>
+            </ul>
         </div>
     </nav>
 

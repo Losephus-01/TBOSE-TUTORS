@@ -8,6 +8,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const loginSubmit = document.getElementById('admin-login-submit');
     const loginError = document.getElementById('login-error');
     const logoutBtn = document.getElementById('admin-logout-btn');
+    const adminHamburgerBtn = document.getElementById('admin-hamburger-btn');
+    const adminMobileMenu = document.getElementById('admin-mobile-menu');
+    const adminMobileLogoutBtn = document.getElementById('admin-mobile-logout-btn');
 
     // Sidebar navigation
     const tabs = document.querySelectorAll('.admin-tab');
@@ -88,7 +91,39 @@ document.addEventListener('DOMContentLoaded', () => {
         logoutBtn.style.display = 'none';
         loginView.style.display = 'flex';
         passwordInput.value = '';
+        document.body.classList.remove('admin-logged-in');
+        if (adminMobileMenu) adminMobileMenu.classList.remove('active');
     });
+
+    // Mobile Hamburger Menu Toggle
+    if (adminHamburgerBtn && adminMobileMenu) {
+        adminHamburgerBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            adminMobileMenu.classList.toggle('active');
+        });
+
+        // Close menu when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!adminMobileMenu.contains(e.target) && e.target !== adminHamburgerBtn) {
+                adminMobileMenu.classList.remove('active');
+            }
+        });
+
+        // Close menu when clicking any tab in the mobile menu
+        const mobileTabs = adminMobileMenu.querySelectorAll('.admin-tab');
+        mobileTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                adminMobileMenu.classList.remove('active');
+            });
+        });
+    }
+
+    // Mobile Logout handler
+    if (adminMobileLogoutBtn) {
+        adminMobileLogoutBtn.addEventListener('click', () => {
+            logoutBtn.click();
+        });
+    }
 
     async function verifyAndLoadDashboard() {
         loginError.style.display = 'none';
@@ -114,6 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
             loginView.style.display = 'none';
             dashboardView.style.display = 'flex';
             logoutBtn.style.display = 'block';
+            document.body.classList.add('admin-logged-in');
 
             // Load panel data
             renderAttendeesTable(cachedAttendees);
