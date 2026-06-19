@@ -2004,6 +2004,11 @@ table.db-table {
     overflow-x: auto;
 }
 
+/* Hide mobile dropdown menu on desktop/tablets by default */
+.admin-mobile-menu {
+    display: none;
+}
+
 /* Responsive dashboard overrides */
 @media (max-width: 1024px) {
     body.admin-page-body {

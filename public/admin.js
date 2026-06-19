@@ -12,8 +12,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const adminMobileMenu = document.getElementById('admin-mobile-menu');
     const adminMobileLogoutBtn = document.getElementById('admin-mobile-logout-btn');
 
-    // Sidebar navigation
-    const tabs = document.querySelectorAll('.admin-tab');
+    // Sidebar navigation — only target sidebar tabs, NOT mobile menu tabs
+    const tabs = document.querySelectorAll('.admin-sidebar .admin-tab');
     const panels = document.querySelectorAll('.admin-tab-panel');
 
     // Database Roster Elements
@@ -109,10 +109,34 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // Close menu when clicking any tab in the mobile menu
+        // Mobile tab clicks: switch panel AND close menu
         const mobileTabs = adminMobileMenu.querySelectorAll('.admin-tab');
-        mobileTabs.forEach(tab => {
-            tab.addEventListener('click', () => {
+        mobileTabs.forEach(mobileTab => {
+            mobileTab.addEventListener('click', () => {
+                const targetTab = mobileTab.getAttribute('data-tab');
+
+                // Sync active state on sidebar tabs
+                tabs.forEach(t => t.classList.remove('active'));
+                const matchingSidebarTab = document.querySelector(`.admin-sidebar .admin-tab[data-tab="${targetTab}"]`);
+                if (matchingSidebarTab) matchingSidebarTab.classList.add('active');
+
+                // Sync active state on mobile menu tabs
+                mobileTabs.forEach(t => t.classList.remove('active'));
+                mobileTab.classList.add('active');
+
+                // Switch the panel
+                panels.forEach(panel => {
+                    if (panel.id === `panel-${targetTab}`) {
+                        panel.classList.add('active');
+                    } else {
+                        panel.classList.remove('active');
+                    }
+                });
+
+                // Reload data for the selected tab
+                if (targetTab === 'registrants') verifyAndLoadDashboard();
+                else if (targetTab === 'messaging') loadAnnouncementsList();
+
                 adminMobileMenu.classList.remove('active');
             });
         });
@@ -148,8 +172,12 @@ document.addEventListener('DOMContentLoaded', () => {
             // Switch views
             loginView.style.display = 'none';
             dashboardView.style.display = 'flex';
-            logoutBtn.style.display = 'block';
+            // Add body class first — CSS controls logout/hamburger visibility by screen size
             document.body.classList.add('admin-logged-in');
+            // Only show logout btn if CSS hasn't hidden it (handled via media query)
+            if (window.innerWidth > 512) {
+                logoutBtn.style.display = 'block';
+            }
 
             // Load panel data
             renderAttendeesTable(cachedAttendees);
@@ -169,6 +197,14 @@ document.addEventListener('DOMContentLoaded', () => {
             
             tabs.forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
+
+            // Sync active state on mobile menu tabs if mobile menu exists
+            if (adminMobileMenu) {
+                const mobileTabs = adminMobileMenu.querySelectorAll('.admin-tab');
+                mobileTabs.forEach(t => t.classList.remove('active'));
+                const matchingMobileTab = adminMobileMenu.querySelector(`.admin-tab[data-tab="${targetTab}"]`);
+                if (matchingMobileTab) matchingMobileTab.classList.add('active');
+            }
 
             panels.forEach(panel => {
                 if (panel.id === `panel-${targetTab}`) {
