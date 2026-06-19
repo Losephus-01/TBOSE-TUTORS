@@ -2009,6 +2009,11 @@ table.db-table {
     display: none;
 }
 
+/* Hide mobile resources list on desktop/tablets by default */
+.admin-resources-mobile-list {
+    display: none;
+}
+
 /* Responsive dashboard overrides */
 @media (max-width: 1024px) {
     body.admin-page-body {
@@ -2047,10 +2052,6 @@ table.db-table {
     .admin-nav-tabs {
         flex-direction: row;
         gap: 8px;
-    }
-    
-    .resources-grid {
-        grid-template-columns: 1fr;
     }
 }
 
@@ -2351,16 +2352,7 @@ table.db-table {
         width: 100% !important;
     }
     
-    /* Stacks upload grid cards */
-    .resources-grid {
-        grid-template-columns: 1fr !important;
-        gap: 24px !important;
-    }
-    
-    .upload-form-card, 
-    .resources-list-card {
-        padding: 24px 16px !important;
-    }
+
     
     /* Clean details modal positioning on smaller viewports */
     .modal-card {
@@ -2550,6 +2542,124 @@ table.db-table {
         display: flex;
         align-items: center;
         gap: 12px;
+    }
+    
+    /* --- STUDY RESOURCES MOBILE STYLES (320px–512px) --- */
+    #panel-resources {
+        width: 100% !important;
+        box-sizing: border-box;
+    }
+    
+    #panel-resources .resources-grid {
+        grid-template-columns: 1fr !important;
+        gap: 16px !important;
+        width: 100% !important;
+        margin: 0 !important;
+    }
+    
+    /* Make cards full width with 16px margin on each side (handled by main container padding) */
+    #panel-resources .upload-form-card,
+    #panel-resources .resources-list-card {
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 24px 16px !important;
+        box-sizing: border-box;
+    }
+    
+    /* Upload form elements full width */
+    #panel-resources .form-group,
+    #panel-resources .input-wrapper,
+    #panel-resources #resource-title,
+    #panel-resources #resource-category {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box;
+    }
+    
+    /* Compact File drop zone */
+    #panel-resources .file-dropzone {
+        width: 100% !important;
+        min-height: 120px !important;
+        padding: 16px !important;
+        justify-content: center !important;
+        box-sizing: border-box;
+    }
+    
+    /* Upload button full width */
+    #panel-resources #upload-submit-btn {
+        width: 100% !important;
+        margin-top: 16px !important;
+    }
+    
+    /* Documents list presentation */
+    #panel-resources .admin-resources-table-container {
+        display: none !important;
+    }
+    
+    #panel-resources .admin-resources-mobile-list {
+        display: flex !important;
+        flex-direction: column;
+        gap: 8px; /* 8px vertical gap between each card */
+        width: 100% !important;
+        box-sizing: border-box;
+        margin-top: 15px;
+    }
+    
+    /* Document mobile cards */
+    .resource-mobile-card {
+        background-color: #f5f5f5;
+        padding: 12px;
+        border-radius: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        position: relative;
+        width: 100% !important;
+        box-sizing: border-box;
+        border: 1px solid var(--border-color);
+    }
+    
+    .resource-mobile-title {
+        font-weight: bold;
+        font-size: 15px;
+        color: var(--primary-color);
+        word-break: break-word;
+    }
+    
+    .resource-mobile-meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    
+    .resource-mobile-details {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+    }
+    
+    .resource-mobile-actions {
+        display: flex;
+        justify-content: flex-end;
+        width: 100%;
+        margin-top: 4px;
+    }
+    
+    /* Mobile Typography overrides */
+    #panel-resources .panel-header h2 {
+        font-size: 22px !important;
+    }
+    
+    .upload-form-card h4 {
+        font-size: 16px !important;
+    }
+    
+    .resources-list-card h4 {
+        font-size: 18px !important;
+    }
+    
+    #panel-resources label {
+        font-size: 13px !important;
     }
 }
 

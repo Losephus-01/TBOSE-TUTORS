@@ -34,6 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const dropzoneArea = document.getElementById('dropzone-area');
     const fileNameSelected = document.getElementById('file-name-selected');
     const adminResourcesList = document.getElementById('admin-resources-list');
+    const adminResourcesMobileList = document.getElementById('admin-resources-mobile-list');
     const uploadSubmitBtn = document.getElementById('upload-submit-btn');
 
     // Announcements & Messaging Elements
@@ -507,9 +508,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const list = await res.json();
             adminResourcesList.innerHTML = '';
+            if (adminResourcesMobileList) {
+                adminResourcesMobileList.innerHTML = '';
+            }
 
             if (list.length === 0) {
                 adminResourcesList.innerHTML = `<tr><td colspan="5" class="text-center text-muted" style="padding: 15px;">No files published.</td></tr>`;
+                if (adminResourcesMobileList) {
+                    adminResourcesMobileList.innerHTML = `<div class="text-center text-muted" style="padding: 15px; font-size: 0.9rem;">No files published.</div>`;
+                }
                 return;
             }
 
@@ -533,6 +540,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     </td>
                 `;
                 adminResourcesList.appendChild(tr);
+
+                // Populate mobile cards view
+                if (adminResourcesMobileList) {
+                    const mobileCard = document.createElement('div');
+                    mobileCard.className = 'resource-mobile-card';
+                    mobileCard.innerHTML = `
+                        <div class="resource-mobile-title">${file.title}</div>
+                        <div class="resource-mobile-meta">
+                            <span class="attendance-badge" style="background: #e2e8f0; color: #475569; border: none; margin: 0;">${prettyCategory}</span>
+                            <span class="resource-mobile-details">${file.fileSize} &bull; ${uploadDate}</span>
+                        </div>
+                        <div class="resource-mobile-actions">
+                            <button class="btn btn-ghost delete-file-btn" data-id="${file.id}" style="color: var(--error-color); border-color: var(--error-color); padding: 4px 8px; font-size: 0.8rem;">
+                                <i class="fa-solid fa-trash-can"></i> Delete
+                            </button>
+                        </div>
+                    `;
+                    adminResourcesMobileList.appendChild(mobileCard);
+                }
             });
 
             // Bind click delete buttons
