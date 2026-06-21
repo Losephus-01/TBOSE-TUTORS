@@ -1393,8 +1393,8 @@ app.post('/api/admin/products', secureUpload.single('file'), async (req, res) =>
         await saveProduct(productRecord);
         return res.status(200).json({ success: true, product: productRecord });
     } catch (err) {
-        console.error('Product save error:', err.message);
-        return res.status(500).json({ error: 'Database save error.' });
+        console.error('Product save error:', err);
+        return res.status(500).json({ error: `Product save error: ${err.message}` });
     }
 });
 
