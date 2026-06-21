@@ -446,29 +446,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 const badgeText = product.type.toUpperCase();
                 const prettyPrice = `₦${parseFloat(product.price).toLocaleString()}`;
-                const isPhysical = product.deliveryMode === 'physical';
 
                 let actionHtml = '';
                 if (isOwned) {
-                    let downloadBtnHtml = '';
-                    if (!isPhysical) {
-                        downloadBtnHtml = `
-                            <button class="btn btn-gold btn-full download-prod-btn" style="margin-top: 8px; background-color: var(--primary-color); border-color: var(--primary-color); color: white;">
-                                Download Material <i class="fa-solid fa-cloud-arrow-down"></i>
-                            </button>
-                        `;
-                    } else {
-                        downloadBtnHtml = `
-                            <div style="background: var(--surface-color); border-left: 3px solid var(--accent-color); padding: 10px; margin-top: 8px; border-radius: var(--border-radius-sm); font-size: 0.8rem; text-align: left; line-height: 1.4;">
-                                <i class="fa-solid fa-gift gold-text"></i> Show receipt at the Ibadan center to claim this physical item.
-                            </div>
-                        `;
-                    }
                     actionHtml = `
                         <button class="btn btn-gold btn-full download-receipt-btn" style="background-color: var(--success-color); border-color: var(--success-color); color: white;">
                             Download Receipt <i class="fa-solid fa-file-invoice"></i>
                         </button>
-                        ${downloadBtnHtml}
+                        <div style="background: var(--surface-color); border-left: 3px solid var(--accent-color); padding: 10px; margin-top: 8px; border-radius: var(--border-radius-sm); font-size: 0.8rem; text-align: left; line-height: 1.4;">
+                            <i class="fa-solid fa-gift gold-text"></i> Show receipt at the Ibadan center to claim this physical item.
+                        </div>
                     `;
                 } else {
                     actionHtml = `
@@ -483,9 +470,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
                             <div>
                                 <span class="badge badge-accent">${escapeHtml(badgeText)}</span>
-                                <span class="badge" style="background: var(--surface-color); color: var(--text-secondary); margin-left: 4px; font-size: 0.7rem; font-weight: bold; border: 1px solid var(--border-color);">
-                                    <i class="fa-solid ${isPhysical ? 'fa-handshake' : 'fa-download'}"></i> ${escapeHtml((product.deliveryMode || 'digital').toUpperCase())}
-                                </span>
                             </div>
                             ${isOwned ? '<span class="status-badge paid" style="font-size: 0.75rem; padding: 4px 8px; border-radius: 12px; background: rgba(22, 163, 74, 0.1); color: var(--success-color); font-weight: bold;"><i class="fa-solid fa-circle-check"></i> Purchased</span>' : ''}
                         </div>
@@ -503,13 +487,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (receiptBtn) {
                         receiptBtn.addEventListener('click', () => {
                             window.location.href = `/api/purchases/${purchaseId}/receipt?ticketId=${encodeURIComponent(ticketId)}`;
-                        });
-                    }
-
-                    const downloadBtn = card.querySelector('.download-prod-btn');
-                    if (downloadBtn) {
-                        downloadBtn.addEventListener('click', () => {
-                            window.location.href = `/api/products/${product.id}/download?ticketId=${encodeURIComponent(ticketId)}`;
                         });
                     }
                 } else {

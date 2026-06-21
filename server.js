@@ -21,16 +21,10 @@ const appUrl = process.env.APP_URL || 'http://localhost:3000';
 // Determine writable paths (Vercel filesystem is read-only except /tmp)
 const ticketsDir = isVercel ? path.join(os.tmpdir(), 'tickets') : path.join(__dirname, 'tickets');
 const uploadDir = isVercel ? path.join(os.tmpdir(), 'uploads') : path.join(__dirname, 'public', 'uploads');
-const secureUploadDir = isVercel ? path.join(os.tmpdir(), 'secure_uploads') : path.join(__dirname, 'secure_uploads');
 
 // Ensure upload folder exists
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
-}
-
-// Ensure secure upload folder exists
-if (!fs.existsSync(secureUploadDir)) {
-    fs.mkdirSync(secureUploadDir, { recursive: true });
 }
 
 // Multer storage setup
@@ -45,9 +39,6 @@ const storage = multer.diskStorage({
     }
 });
 const upload = multer({ storage: storage });
-
-// Secure Multer storage setup for paid products (uses Memory Storage for Firebase/Serverless compatibility)
-const secureUpload = multer({ storage: multer.memoryStorage() });
 
 // Middleware
 app.use(cors());
@@ -559,12 +550,11 @@ async function generateReceiptPDF(purchase, student, product, outputPath) {
             // Product Details Block
             doc.rect(15, y, doc.page.width - 30, 42).fill('#E9EAEE');
             doc.fillColor('#1B1F8A').font('Helvetica-Bold').fontSize(8.5).text(product.title, 20, y + 6);
-            doc.fillColor('#5F6475').font('Helvetica').fontSize(7.5).text(`Type: ${product.type.toUpperCase()} (${product.deliveryMode.toUpperCase()})`, 20, y + 18);
+            doc.fillColor('#5F6475').font('Helvetica').fontSize(7.5).text(`Type: ${product.type.toUpperCase()} (PHYSICAL)`, 20, y + 18);
             doc.fillColor('#16A34A').font('Helvetica-Bold').fontSize(9).text(`₦${parseFloat(purchase.pricePaid).toLocaleString()}`, 20, y + 28, { align: 'right', width: doc.page.width - 55 });
             y += 48;
 
             // Status Stamp Banner
-            const isPhysical = product.deliveryMode === 'physical';
             const statusColor = '#16A34A';
             const statusText = 'TRANSACTION COMPLETED - PAID';
             
@@ -577,11 +567,7 @@ async function generateReceiptPDF(purchase, student, product, outputPath) {
 
             // Delivery Note / Instructions
             doc.fillColor('#5F6475').font('Helvetica-Oblique').fontSize(7);
-            if (isPhysical) {
-                doc.text('* Present this receipt at the Ibadan Center to collect your physical material.', 15, y, { align: 'center', width: doc.page.width - 30 });
-            } else {
-                doc.text('* Download your digital materials directly from your Student Portal.', 15, y, { align: 'center', width: doc.page.width - 30 });
-            }
+            doc.text('* Present this receipt at the Ibadan Center to collect your physical material.', 15, y, { align: 'center', width: doc.page.width - 30 });
 
             doc.end();
             stream.on('finish', () => resolve(outputPath));
@@ -1336,7 +1322,7 @@ app.get('/api/announcements/:ticketId', async (req, res) => {
 // ----------------------------------------------------
 
 // Endpoint: Admin Upload/Create a new paid product
-app.post('/api/admin/products', secureUpload.single('file'), async (req, res) => {
+app.post('/api/admin/products', async (req, res) => {
     const authHeader = req.headers['authorization'];
     const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
 
@@ -1344,13 +1330,9 @@ app.post('/api/admin/products', secureUpload.single('file'), async (req, res) =>
         return res.status(401).json({ error: 'Unauthorized credentials.' });
     }
 
-    const { title, description, type, price, deliveryMode } = req.body;
-    if (!title || !description || !type || !price || !deliveryMode) {
+    const { title, description, type, price } = req.body;
+    if (!title || !description || !type || !price) {
         return res.status(400).json({ error: 'Missing required product parameters.' });
-    }
-
-    if (deliveryMode === 'digital' && !req.file) {
-        return res.status(400).json({ error: 'Digital products require a file upload.' });
     }
 
     try {
@@ -1361,32 +1343,14 @@ app.post('/api/admin/products', secureUpload.single('file'), async (req, res) =>
             return res.status(400).json({ error: 'Price must be a valid positive number.' });
         }
 
-        let finalFileName = null;
-        if (deliveryMode === 'digital' && req.file) {
-            finalFileName = Date.now() + '-' + req.file.originalname.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-            
-            if (isFirebaseConnected && db) {
-                // Upload to Firebase Storage bucket
-                const bucket = admin.storage().bucket();
-                const fileRef = bucket.file(`secure_uploads/${finalFileName}`);
-                await fileRef.save(req.file.buffer, {
-                    metadata: { contentType: req.file.mimetype }
-                });
-            } else {
-                // Local disk storage fallback
-                const filePath = path.join(secureUploadDir, finalFileName);
-                fs.writeFileSync(filePath, req.file.buffer);
-            }
-        }
-
         const productRecord = {
             id,
             title: title.trim(),
             description: description.trim(),
             type: type.trim(),
-            deliveryMode: deliveryMode.trim(),
+            deliveryMode: 'physical',
             price: parsedPrice,
-            fileName: finalFileName,
+            fileName: null,
             createdAt: new Date().toISOString()
         };
 
@@ -1476,63 +1440,7 @@ app.post('/api/products/purchase', async (req, res) => {
     }
 });
 
-// Endpoint: Download secure product files (Only after purchase verification)
-app.get('/api/products/:id/download', async (req, res) => {
-    const { id } = req.params;
-    const { ticketId } = req.query;
 
-    if (!ticketId) {
-        return res.status(400).json({ error: 'Missing student ticketId.' });
-    }
-
-    try {
-        const studentId = ticketId.trim().toUpperCase();
-        // 1. Verify purchase exists
-        const hasPaid = await checkPurchaseExists(studentId, id);
-        if (!hasPaid) {
-            return res.status(403).json({ error: 'Access denied. You have not purchased this item.' });
-        }
-
-        // 2. Locate product metadata to get actual file name
-        const product = await getProductById(id);
-        if (!product) {
-            return res.status(404).json({ error: 'Product metadata not found.' });
-        }
-
-        if (product.deliveryMode === 'physical') {
-            return res.status(400).json({ error: 'This is a physical product and cannot be downloaded.' });
-        }
-
-        if (!product.fileName) {
-            return res.status(404).json({ error: 'Product file not found.' });
-        }
-
-        // 3. Serve file from Firebase Storage or Local Disk
-        if (isFirebaseConnected && db) {
-            const bucket = admin.storage().bucket();
-            const fileRef = bucket.file(`secure_uploads/${product.fileName}`);
-            const [exists] = await fileRef.exists();
-            if (!exists) {
-                return res.status(404).json({ error: 'Product file not found in storage.' });
-            }
-
-            const [metadata] = await fileRef.getMetadata();
-            res.setHeader('Content-Disposition', `attachment; filename="${product.title}${path.extname(product.fileName)}"`);
-            res.setHeader('Content-Type', metadata.contentType || 'application/octet-stream');
-            
-            return fileRef.createReadStream().pipe(res);
-        } else {
-            const filePath = path.join(secureUploadDir, product.fileName);
-            if (!fs.existsSync(filePath)) {
-                return res.status(404).json({ error: 'Product file not found on server.' });
-            }
-            return res.download(filePath, product.title + path.extname(product.fileName));
-        }
-    } catch (err) {
-        console.error('Download product error:', err.message);
-        return res.status(500).json({ error: 'Failed to download product.' });
-    }
-});
 
 // Endpoint: Download product purchase receipt PDF
 app.get('/api/purchases/:id/receipt', async (req, res) => {
@@ -1727,23 +1635,6 @@ app.delete('/api/admin/products/:id', async (req, res) => {
         const product = await getProductById(id);
         if (!product) {
             return res.status(404).json({ error: 'Product not found.' });
-        }
-
-        // Remove secure file from storage/disk if it exists (digital products)
-        if (product.fileName) {
-            if (isFirebaseConnected && db) {
-                const bucket = admin.storage().bucket();
-                const fileRef = bucket.file(`secure_uploads/${product.fileName}`);
-                const [exists] = await fileRef.exists();
-                if (exists) {
-                    await fileRef.delete();
-                }
-            } else {
-                const filePath = path.join(secureUploadDir, product.fileName);
-                if (fs.existsSync(filePath)) {
-                    fs.unlinkSync(filePath);
-                }
-            }
         }
 
         // Remove record from database

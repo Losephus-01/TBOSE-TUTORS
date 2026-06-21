@@ -400,7 +400,7 @@
                             <h3><i class="fa-solid fa-plus gold-text"></i> Publish New Paid Material</h3>
                         </div>
                         <form id="admin-product-upload-form" class="admin-form" style="margin-top: 15px;">
-                            <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+                            <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                                 <div class="form-group">
                                     <label for="product-title">Material Title</label>
                                     <div class="input-wrapper">
@@ -419,27 +419,14 @@
                                         </select>
                                     </div>
                                 </div>
-                                <div class="form-group">
-                                    <label for="product-delivery">Delivery Mode</label>
-                                    <div class="select-wrapper">
-                                        <select id="product-delivery" required>
-                                            <option value="digital">Digital (File Download)</option>
-                                            <option value="physical">Physical (In-Person Collection)</option>
-                                        </select>
-                                    </div>
-                                </div>
                             </div>
-                            <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 15px;">
+                            <div class="form-row" style="display: grid; grid-template-columns: 1fr; gap: 16px; margin-top: 15px;">
                                 <div class="form-group">
                                     <label for="product-price">Price (₦ - Naira)</label>
                                     <div class="input-wrapper">
                                         <i class="fa-solid fa-naira-sign input-icon"></i>
                                         <input type="number" id="product-price" placeholder="e.g. 3500" min="0" required>
                                     </div>
-                                </div>
-                                <div class="form-group" id="product-file-container">
-                                    <label for="product-file">Upload Material File (PDF, DOCX, ZIP)</label>
-                                    <input type="file" id="product-file" style="border: 1px solid var(--border-color); padding: 8px; border-radius: var(--border-radius-sm); width: 100%;" required>
                                 </div>
                             </div>
                             <div class="form-group" style="margin-top: 15px;">

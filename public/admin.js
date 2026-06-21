@@ -883,22 +883,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const adminProductsList = document.getElementById('admin-products-list');
     const productsCountBadge = document.getElementById('products-count-badge');
     const productUploadBtn = document.getElementById('product-upload-btn');
-    const productDelivery = document.getElementById('product-delivery');
-    const productFileContainer = document.getElementById('product-file-container');
-    const productFileInput = document.getElementById('product-file');
-
-    if (productDelivery && productFileContainer && productFileInput) {
-        productDelivery.addEventListener('change', () => {
-            if (productDelivery.value === 'physical') {
-                productFileContainer.style.display = 'none';
-                productFileInput.required = false;
-                productFileInput.value = '';
-            } else {
-                productFileContainer.style.display = 'block';
-                productFileInput.required = true;
-            }
-        });
-    }
 
     if (productUploadForm) {
         productUploadForm.addEventListener('submit', async (e) => {
@@ -906,19 +890,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const title = document.getElementById('product-title').value.trim();
             const type = document.getElementById('product-type').value;
-            const deliveryMode = productDelivery ? productDelivery.value : 'digital';
             const price = document.getElementById('product-price').value.trim();
             const description = document.getElementById('product-description').value.trim();
-            const file = productFileInput ? productFileInput.files[0] : null;
 
             const parsedPrice = parseFloat(price);
             if (isNaN(parsedPrice) || parsedPrice < 0) {
                 alert('Price must be a valid positive number.');
-                return;
-            }
-
-            if (deliveryMode === 'digital' && !file) {
-                alert('Digital products require a file upload.');
                 return;
             }
 
@@ -927,24 +904,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            const formData = new FormData();
-            formData.append('title', title);
-            formData.append('type', type);
-            formData.append('deliveryMode', deliveryMode);
-            formData.append('price', price);
-            formData.append('description', description);
-            if (deliveryMode === 'digital' && file) {
-                formData.append('file', file);
-            }
-
             productUploadBtn.disabled = true;
             productUploadBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Publishing...';
 
             try {
                 const res = await fetch('/api/admin/products', {
                     method: 'POST',
-                    headers: { 'Authorization': adminPassword },
-                    body: formData
+                    headers: { 
+                        'Authorization': adminPassword,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        title,
+                        type,
+                        price: parsedPrice,
+                        description
+                    })
                 });
 
                 if (!res.ok) {
@@ -955,10 +930,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 alert('Paid material successfully published!');
                 productUploadForm.reset();
-                if (productFileContainer && productFileInput) {
-                    productFileContainer.style.display = 'block';
-                    productFileInput.required = true;
-                }
                 loadProductsList();
             } catch (err) {
                 console.error(err);
@@ -1004,7 +975,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td style="padding: 12px; border-bottom: 1px solid var(--border-color);">
                         <span class="badge badge-accent">${escapeHtml(product.type.toUpperCase())}</span>
                         <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 4px; font-weight: bold; text-transform: uppercase;">
-                            <i class="fa-solid ${product.deliveryMode === 'digital' ? 'fa-download' : 'fa-handshake'}"></i> ${escapeHtml(product.deliveryMode || 'digital')}
+                            <i class="fa-solid fa-handshake"></i> PHYSICAL
                         </div>
                     </td>
                     <td style="padding: 12px; border-bottom: 1px solid var(--border-color); font-weight: 600; color: var(--primary-color);">
