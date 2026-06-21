@@ -21,10 +21,16 @@ const appUrl = process.env.APP_URL || 'http://localhost:3000';
 // Determine writable paths (Vercel filesystem is read-only except /tmp)
 const ticketsDir = isVercel ? path.join(os.tmpdir(), 'tickets') : path.join(__dirname, 'tickets');
 const uploadDir = isVercel ? path.join(os.tmpdir(), 'uploads') : path.join(__dirname, 'public', 'uploads');
+const secureUploadDir = isVercel ? path.join(os.tmpdir(), 'secure_uploads') : path.join(__dirname, 'secure_uploads');
 
 // Ensure upload folder exists
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// Ensure secure upload folder exists
+if (!fs.existsSync(secureUploadDir)) {
+    fs.mkdirSync(secureUploadDir, { recursive: true });
 }
 
 // Multer storage setup
@@ -39,6 +45,18 @@ const storage = multer.diskStorage({
     }
 });
 const upload = multer({ storage: storage });
+
+// Secure Multer storage setup for paid products
+const secureStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, secureUploadDir);
+    },
+    filename: (req, file, cb) => {
+        const safeName = file.originalname.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+        cb(null, Date.now() + '-' + safeName);
+    }
+});
+const secureUpload = multer({ storage: secureStorage });
 
 // Middleware
 app.use(cors());
@@ -232,6 +250,118 @@ async function getAllAnnouncements() {
     }
 }
 
+// Products DB Helper Functions (dual Firestore/Mock DB setup)
+const productsMockPath = isVercel ? path.join(os.tmpdir(), 'db_products_mock.json') : path.join(__dirname, 'db_products_mock.json');
+if (!fs.existsSync(productsMockPath)) {
+    fs.writeFileSync(productsMockPath, JSON.stringify([], null, 2));
+}
+
+async function saveProduct(product) {
+    if (isFirebaseConnected && db) {
+        await db.collection('products').doc(product.id).set(product, { merge: true });
+    } else {
+        const data = JSON.parse(fs.readFileSync(productsMockPath, 'utf8'));
+        const index = data.findIndex(item => item.id === product.id);
+        if (index > -1) {
+            data[index] = { ...data[index], ...product };
+        } else {
+            data.push(product);
+        }
+        fs.writeFileSync(productsMockPath, JSON.stringify(data, null, 2));
+    }
+}
+
+async function getAllProducts() {
+    if (isFirebaseConnected && db) {
+        const snapshot = await db.collection('products').get();
+        const list = [];
+        snapshot.forEach(doc => list.push(doc.data()));
+        // Sort by createdAt desc manually if Firestore doesn't have index or local sort
+        return list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    } else {
+        const list = JSON.parse(fs.readFileSync(productsMockPath, 'utf8'));
+        return list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    }
+}
+
+async function getProductById(id) {
+    if (isFirebaseConnected && db) {
+        const doc = await db.collection('products').doc(id).get();
+        return doc.exists ? doc.data() : null;
+    } else {
+        const data = JSON.parse(fs.readFileSync(productsMockPath, 'utf8'));
+        return data.find(item => item.id === id) || null;
+    }
+}
+
+async function deleteProductFromDb(id) {
+    if (isFirebaseConnected && db) {
+        await db.collection('products').doc(id).delete();
+    } else {
+        let data = JSON.parse(fs.readFileSync(productsMockPath, 'utf8'));
+        data = data.filter(item => item.id !== id);
+        fs.writeFileSync(productsMockPath, JSON.stringify(data, null, 2));
+    }
+}
+
+// Purchases DB Helper Functions (dual Firestore/Mock DB setup)
+const purchasesMockPath = isVercel ? path.join(os.tmpdir(), 'db_purchases_mock.json') : path.join(__dirname, 'db_purchases_mock.json');
+if (!fs.existsSync(purchasesMockPath)) {
+    fs.writeFileSync(purchasesMockPath, JSON.stringify([], null, 2));
+}
+
+async function savePurchase(purchase) {
+    if (isFirebaseConnected && db) {
+        await db.collection('purchases').doc(purchase.id).set(purchase, { merge: true });
+    } else {
+        const data = JSON.parse(fs.readFileSync(purchasesMockPath, 'utf8'));
+        const index = data.findIndex(item => item.id === purchase.id);
+        if (index > -1) {
+            data[index] = { ...data[index], ...purchase };
+        } else {
+            data.push(purchase);
+        }
+        fs.writeFileSync(purchasesMockPath, JSON.stringify(data, null, 2));
+    }
+}
+
+async function getPurchasesByTicketId(ticketId) {
+    if (isFirebaseConnected && db) {
+        const snapshot = await db.collection('purchases').where('ticketId', '==', ticketId).get();
+        const list = [];
+        snapshot.forEach(doc => list.push(doc.data()));
+        return list;
+    } else {
+        const data = JSON.parse(fs.readFileSync(purchasesMockPath, 'utf8'));
+        return data.filter(item => item.ticketId === ticketId);
+    }
+}
+
+async function checkPurchaseExists(ticketId, productId) {
+    if (isFirebaseConnected && db) {
+        const snapshot = await db.collection('purchases')
+            .where('ticketId', '==', ticketId)
+            .where('productId', '==', productId)
+            .limit(1)
+            .get();
+        return !snapshot.empty;
+    } else {
+        const data = JSON.parse(fs.readFileSync(purchasesMockPath, 'utf8'));
+        return data.some(item => item.ticketId === ticketId && item.productId === productId);
+    }
+}
+
+async function getAllPurchases() {
+    if (isFirebaseConnected && db) {
+        const snapshot = await db.collection('purchases').get();
+        const list = [];
+        snapshot.forEach(doc => list.push(doc.data()));
+        return list;
+    } else {
+        return JSON.parse(fs.readFileSync(purchasesMockPath, 'utf8'));
+    }
+}
+
 // Asynchronous background email dispatcher loop
 async function dispatchAnnouncementEmails(announcement, targets) {
     if (!process.env.EMAIL_USER || process.env.EMAIL_USER.includes('your_email')) {
@@ -370,6 +500,195 @@ async function generateTicketPDF(attendee, outputPath) {
                .font('Helvetica-Bold')
                .fontSize(12)
                .text(attendee.ticketId, 15, doc.page.height - 33, { align: 'center', characterSpacing: 1.5 });
+
+            doc.end();
+            stream.on('finish', () => resolve(outputPath));
+            stream.on('error', (err) => reject(err));
+        } catch (err) {
+            reject(err);
+        }
+    });
+}
+
+// Helper: Generate Product Purchase Receipt PDF
+async function generateReceiptPDF(purchase, student, product, outputPath) {
+    return new Promise((resolve, reject) => {
+        try {
+            const doc = new PDFDocument({ size: 'A6', margin: 15 });
+            const stream = fs.createWriteStream(outputPath);
+            doc.pipe(stream);
+
+            // Light Background
+            doc.rect(0, 0, doc.page.width, doc.page.height).fill('#F3F4F6');
+
+            // Header Banner (Navy Background)
+            doc.rect(0, 0, doc.page.width, 45).fill('#10145C');
+
+            // Header Title
+            doc.fillColor('#00AEEF') // Cyan Accent
+               .font('Helvetica-Bold')
+               .fontSize(12)
+               .text('TBOSE TUTORS', 15, 12, { align: 'center', characterSpacing: 1 });
+
+            doc.fillColor('#FFFFFF')
+               .font('Helvetica')
+               .fontSize(8)
+               .text('OFFICIAL PURCHASE RECEIPT', 15, 26, { align: 'center' });
+
+            // Receipt Metadata Info
+            doc.fillColor('#15172B').font('Helvetica-Bold').fontSize(9).text('TRANSACTION RECEIPT', 15, 55);
+
+            // Divider Line
+            doc.strokeColor('#C7CBD6').lineWidth(0.5).moveTo(15, 68).lineTo(doc.page.width - 15, 68).stroke();
+
+            let y = 75;
+            const drawRow = (label, val, highlightColor = '#15172B') => {
+                doc.fillColor('#5F6475').font('Helvetica').fontSize(8).text(label, 15, y);
+                doc.fillColor(highlightColor).font('Helvetica-Bold').fontSize(8).text(val, 75, y, { width: doc.page.width - 90, align: 'right' });
+                y += 14;
+            };
+
+            drawRow('Receipt ID:', purchase.id);
+            drawRow('Student Name:', student.fullName);
+            drawRow('Ticket ID:', student.ticketId);
+            drawRow('Date Paid:', new Date(purchase.purchasedAt).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }));
+            drawRow('Payment Ref:', purchase.reference);
+
+            // Divider Line
+            doc.strokeColor('#C7CBD6').lineWidth(0.5).moveTo(15, y + 4).lineTo(doc.page.width - 15, y + 4).stroke();
+            y += 10;
+
+            doc.fillColor('#15172B').font('Helvetica-Bold').fontSize(9).text('ITEMS PURCHASED', 15, y);
+            y += 14;
+
+            // Product Details Block
+            doc.rect(15, y, doc.page.width - 30, 42).fill('#E9EAEE');
+            doc.fillColor('#1B1F8A').font('Helvetica-Bold').fontSize(8.5).text(product.title, 20, y + 6);
+            doc.fillColor('#5F6475').font('Helvetica').fontSize(7.5).text(`Type: ${product.type.toUpperCase()} (${product.deliveryMode.toUpperCase()})`, 20, y + 18);
+            doc.fillColor('#16A34A').font('Helvetica-Bold').fontSize(9).text(`₦${parseFloat(purchase.pricePaid).toLocaleString()}`, 20, y + 28, { align: 'right', width: doc.page.width - 55 });
+            y += 48;
+
+            // Status Stamp Banner
+            const isPhysical = product.deliveryMode === 'physical';
+            const statusColor = '#16A34A';
+            const statusText = 'TRANSACTION COMPLETED - PAID';
+            
+            doc.rect(15, y, doc.page.width - 30, 20).fill(statusColor);
+            doc.fillColor('#FFFFFF')
+               .font('Helvetica-Bold')
+               .fontSize(7.5)
+               .text(statusText, 15, y + 6, { align: 'center' });
+            y += 24;
+
+            // Delivery Note / Instructions
+            doc.fillColor('#5F6475').font('Helvetica-Oblique').fontSize(7);
+            if (isPhysical) {
+                doc.text('* Present this receipt at the Ibadan Center to collect your physical material.', 15, y, { align: 'center', width: doc.page.width - 30 });
+            } else {
+                doc.text('* Download your digital materials directly from your Student Portal.', 15, y, { align: 'center', width: doc.page.width - 30 });
+            }
+
+            doc.end();
+            stream.on('finish', () => resolve(outputPath));
+            stream.on('error', (err) => reject(err));
+        } catch (err) {
+            reject(err);
+        }
+    });
+}
+
+async function generateTuitionReceiptPDF(student, monthKey, ledger, outputPath) {
+    return new Promise((resolve, reject) => {
+        try {
+            const doc = new PDFDocument({ size: 'A6', margin: 15 });
+            const stream = fs.createWriteStream(outputPath);
+            doc.pipe(stream);
+
+            // Light Background
+            doc.rect(0, 0, doc.page.width, doc.page.height).fill('#F3F4F6');
+
+            // Header Banner (Navy Background)
+            doc.rect(0, 0, doc.page.width, 45).fill('#10145C');
+
+            // Header Title
+            doc.fillColor('#00AEEF') // Cyan Accent
+               .font('Helvetica-Bold')
+               .fontSize(12)
+               .text('TBOSE TUTORS', 15, 12, { align: 'center', characterSpacing: 1 });
+
+            doc.fillColor('#FFFFFF')
+               .font('Helvetica')
+               .fontSize(8)
+               .text('TUITION PAYMENT RECEIPT', 15, 26, { align: 'center' });
+
+            // Receipt Metadata Info
+            doc.fillColor('#15172B').font('Helvetica-Bold').fontSize(9).text('TRANSACTION RECEIPT', 15, 55);
+
+            // Divider Line
+            doc.strokeColor('#C7CBD6').lineWidth(0.5).moveTo(15, 68).lineTo(doc.page.width - 15, 68).stroke();
+
+            let y = 75;
+            const drawRow = (label, val, highlightColor = '#15172B') => {
+                doc.fillColor('#5F6475').font('Helvetica').fontSize(8).text(label, 15, y);
+                doc.fillColor(highlightColor).font('Helvetica-Bold').fontSize(8).text(val, 75, y, { width: doc.page.width - 90, align: 'right' });
+                y += 14;
+            };
+
+            const isFull = ledger.status === 'paid';
+            const receiptId = `TR-${student.ticketId}-${monthKey.toUpperCase()}`;
+            drawRow('Receipt ID:', receiptId);
+            drawRow('Student Name:', student.fullName);
+            drawRow('Ticket ID:', student.ticketId);
+            drawRow('Date Issued:', new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }));
+            drawRow('Payment Ref:', ledger.lastPaymentRef || 'N/A');
+
+            // Stamp mark on the right side
+            const stampColor = isFull ? '#16A34A' : '#D97706';
+            const stampText = isFull ? 'PAID' : 'PART PAID';
+            
+            doc.save();
+            doc.translate(doc.page.width - 85, 65);
+            doc.rotate(-15); // Slant it slightly
+            doc.strokeColor(stampColor).lineWidth(1.5).rect(0, 0, 70, 20).stroke();
+            doc.fillColor(stampColor).font('Helvetica-Bold').fontSize(8).text(stampText, 0, 6, { width: 70, align: 'center' });
+            doc.restore();
+
+            // Divider Line
+            doc.strokeColor('#C7CBD6').lineWidth(0.5).moveTo(15, y + 4).lineTo(doc.page.width - 15, y + 4).stroke();
+            y += 10;
+
+            doc.fillColor('#15172B').font('Helvetica-Bold').fontSize(9).text('TUITION FEES LEDGER', 15, y);
+            y += 14;
+
+            // Tuition Details Block
+            doc.rect(15, y, doc.page.width - 30, 42).fill('#E9EAEE');
+            
+            const monthNames = {
+                'month_1': 'Month 1 Tuition',
+                'month_2': 'Month 2 Tuition'
+            };
+            const monthTitle = monthNames[monthKey] || `${monthKey.replace('_', ' ').replace(/\b\w/g, c => c.toUpperCase())} Tuition`;
+
+            doc.fillColor('#1B1F8A').font('Helvetica-Bold').fontSize(8.5).text(monthTitle, 20, y + 6);
+            doc.fillColor('#5F6475').font('Helvetica').fontSize(7.5).text(`Status: ${ledger.status.toUpperCase()}`, 20, y + 18);
+            doc.fillColor('#5F6475').font('Helvetica').fontSize(7.5).text(`Outstanding Balance: ₦${parseFloat(ledger.balance).toLocaleString()}`, 20, y + 28);
+            doc.fillColor('#16A34A').font('Helvetica-Bold').fontSize(9).text(`₦${parseFloat(ledger.amountPaid).toLocaleString()}`, 20, y + 28, { align: 'right', width: doc.page.width - 55 });
+            y += 48;
+
+            // Status Stamp Banner
+            const statusColor = isFull ? '#16A34A' : '#D97706';
+            const statusText = isFull ? 'TUITION PAYMENT - COMPLETED' : 'TUITION PAYMENT - INSTALLMENT / PARTIAL';
+            
+            doc.rect(15, y, doc.page.width - 30, 20).fill(statusColor);
+            doc.fillColor('#FFFFFF')
+               .font('Helvetica-Bold')
+               .fontSize(7.5)
+               .text(statusText, 15, y + 6, { align: 'center' });
+            y += 24;
+
+            // Notes
+            doc.fillColor('#5F6475').font('Helvetica-Oblique').fontSize(7);
+            doc.text('* This is an official receipt of payment for TBOSE UTME/Post-UTME prep portal.', 15, y, { align: 'center', width: doc.page.width - 30 });
 
             doc.end();
             stream.on('finish', () => resolve(outputPath));
@@ -1014,6 +1333,404 @@ app.get('/api/announcements/:ticketId', async (req, res) => {
     } catch (err) {
         console.error(err);
         return res.status(500).json({ error: 'Failed to retrieve announcements.' });
+    }
+});
+
+// ----------------------------------------------------
+// 7. STUDENT TOOLS (PRODUCTS & SECURE PURCHASES) API
+// ----------------------------------------------------
+
+// Endpoint: Admin Upload/Create a new paid product
+app.post('/api/admin/products', secureUpload.single('file'), async (req, res) => {
+    const authHeader = req.headers['authorization'];
+    const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+
+    if (!authHeader || authHeader !== adminPassword) {
+        // Clean up file if unauthorized
+        if (req.file && fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+        }
+        return res.status(401).json({ error: 'Unauthorized credentials.' });
+    }
+
+    const { title, description, type, price, deliveryMode } = req.body;
+    if (!title || !description || !type || !price || !deliveryMode) {
+        // Clean up file if missing fields
+        if (req.file && fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+        }
+        return res.status(400).json({ error: 'Missing required product parameters.' });
+    }
+
+    if (deliveryMode === 'digital' && !req.file) {
+        return res.status(400).json({ error: 'Digital products require a file upload.' });
+    }
+
+    try {
+        const id = 'prod_' + Math.floor(100000 + Math.random() * 900000);
+        const parsedPrice = parseFloat(price);
+
+        if (isNaN(parsedPrice) || parsedPrice < 0) {
+            if (req.file && fs.existsSync(req.file.path)) {
+                fs.unlinkSync(req.file.path);
+            }
+            return res.status(400).json({ error: 'Price must be a valid positive number.' });
+        }
+
+        const productRecord = {
+            id,
+            title: title.trim(),
+            description: description.trim(),
+            type: type.trim(),
+            deliveryMode: deliveryMode.trim(),
+            price: parsedPrice,
+            fileName: req.file ? req.file.filename : null,
+            createdAt: new Date().toISOString()
+        };
+
+        await saveProduct(productRecord);
+        return res.status(200).json({ success: true, product: productRecord });
+    } catch (err) {
+        console.error('Product save error:', err.message);
+        if (req.file && fs.existsSync(req.file.path)) {
+            fs.unlinkSync(req.file.path);
+        }
+        return res.status(500).json({ error: 'Database save error.' });
+    }
+});
+
+// Endpoint: Fetch all products for student portal (fileName is excluded for security)
+app.get('/api/products', async (req, res) => {
+    try {
+        const products = await getAllProducts();
+        const safeProducts = products.map(({ fileName, ...rest }) => rest);
+        return res.json(safeProducts);
+    } catch (err) {
+        console.error('Fetch products error:', err.message);
+        return res.status(500).json({ error: 'Failed to retrieve products.' });
+    }
+});
+
+// Endpoint: Fetch purchases made by a specific student ticket ID
+app.get('/api/student/purchases', async (req, res) => {
+    const { ticketId } = req.query;
+    if (!ticketId) {
+        return res.status(400).json({ error: 'Missing student ticketId.' });
+    }
+
+    try {
+        const attendee = await getAttendeeByTicketId(ticketId.trim().toUpperCase());
+        if (!attendee) {
+            return res.status(404).json({ error: 'Student Ticket ID not found.' });
+        }
+
+        const purchases = await getPurchasesByTicketId(ticketId.trim().toUpperCase());
+        return res.json(purchases);
+    } catch (err) {
+        console.error('Fetch purchases error:', err.message);
+        return res.status(500).json({ error: 'Failed to retrieve purchases.' });
+    }
+});
+
+// Endpoint: Record a mock purchase (Simulated payment confirmation)
+app.post('/api/products/purchase', async (req, res) => {
+    const { ticketId, productId, reference } = req.body;
+    if (!ticketId || !productId || !reference) {
+        return res.status(400).json({ error: 'Missing required purchase parameters.' });
+    }
+
+    try {
+        const studentId = ticketId.trim().toUpperCase();
+        // 1. Verify student exists
+        const attendee = await getAttendeeByTicketId(studentId);
+        if (!attendee) {
+            return res.status(404).json({ error: 'Student Ticket ID not found.' });
+        }
+
+        // 2. Verify product exists
+        const product = await getProductById(productId);
+        if (!product) {
+            return res.status(404).json({ error: 'Product not found.' });
+        }
+
+        // 3. Prevent duplicate purchase
+        const alreadyPurchased = await checkPurchaseExists(studentId, productId);
+        if (alreadyPurchased) {
+            return res.status(400).json({ error: 'Product already purchased.' });
+        }
+
+        const purchaseRecord = {
+            id: 'purch_' + Math.floor(100000 + Math.random() * 900000),
+            ticketId: studentId,
+            productId,
+            reference,
+            pricePaid: product.price,
+            purchasedAt: new Date().toISOString(),
+            status: 'completed'
+        };
+
+        await savePurchase(purchaseRecord);
+        return res.json({ success: true, purchase: purchaseRecord });
+    } catch (err) {
+        console.error('Purchase confirmation error:', err.message);
+        return res.status(500).json({ error: 'Failed to record purchase.' });
+    }
+});
+
+// Endpoint: Download secure product files (Only after purchase verification)
+app.get('/api/products/:id/download', async (req, res) => {
+    const { id } = req.params;
+    const { ticketId } = req.query;
+
+    if (!ticketId) {
+        return res.status(400).json({ error: 'Missing student ticketId.' });
+    }
+
+    try {
+        const studentId = ticketId.trim().toUpperCase();
+        // 1. Verify purchase exists
+        const hasPaid = await checkPurchaseExists(studentId, id);
+        if (!hasPaid) {
+            return res.status(403).json({ error: 'Access denied. You have not purchased this item.' });
+        }
+
+        // 2. Locate product metadata to get actual file name
+        const product = await getProductById(id);
+        if (!product) {
+            return res.status(404).json({ error: 'Product metadata not found.' });
+        }
+
+        if (product.deliveryMode === 'physical') {
+            return res.status(400).json({ error: 'This is a physical product and cannot be downloaded.' });
+        }
+
+        if (!product.fileName) {
+            return res.status(404).json({ error: 'Product file not found.' });
+        }
+
+        const filePath = path.join(secureUploadDir, product.fileName);
+        if (!fs.existsSync(filePath)) {
+            return res.status(404).json({ error: 'Product file not found on server.' });
+        }
+
+        // 3. Send file
+        return res.download(filePath, product.title + path.extname(product.fileName));
+    } catch (err) {
+        console.error('Download product error:', err.message);
+        return res.status(500).json({ error: 'Failed to download product.' });
+    }
+});
+
+// Endpoint: Download product purchase receipt PDF
+app.get('/api/purchases/:id/receipt', async (req, res) => {
+    const { id } = req.params;
+    const { ticketId } = req.query;
+
+    if (!ticketId) {
+        return res.status(400).json({ error: 'Missing student ticketId.' });
+    }
+
+    try {
+        const studentId = ticketId.trim().toUpperCase();
+        // 1. Verify student exists
+        const student = await getAttendeeByTicketId(studentId);
+        if (!student) {
+            return res.status(404).json({ error: 'Student Ticket ID not found.' });
+        }
+
+        // 2. Fetch purchase record
+        let purchase = null;
+        if (isFirebaseConnected && db) {
+            const doc = await db.collection('purchases').doc(id).get();
+            purchase = doc.exists ? doc.data() : null;
+        } else {
+            const data = JSON.parse(fs.readFileSync(purchasesMockPath, 'utf8'));
+            purchase = data.find(item => item.id === id) || null;
+        }
+
+        if (!purchase) {
+            return res.status(404).json({ error: 'Purchase record not found.' });
+        }
+
+        // 3. Verify purchase belongs to this student
+        if (purchase.ticketId !== studentId) {
+            return res.status(403).json({ error: 'Access denied. This receipt does not belong to you.' });
+        }
+
+        // 4. Get product details
+        const product = await getProductById(purchase.productId);
+        if (!product) {
+            return res.status(404).json({ error: 'Associated product details not found.' });
+        }
+
+        // 5. Generate Receipt PDF
+        const receiptFileName = `receipt-${purchase.id}.pdf`;
+        const receiptPath = path.join(ticketsDir, receiptFileName);
+        
+        await generateReceiptPDF(purchase, student, product, receiptPath);
+
+        // 6. Send file for download
+        return res.download(receiptPath, `Receipt-${product.title.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`);
+    } catch (err) {
+        console.error('Download receipt error:', err.message);
+        return res.status(500).json({ error: 'Failed to download receipt.' });
+    }
+});
+
+// Endpoint: Download tuition payment receipt PDF
+app.get('/api/tuition/receipt', async (req, res) => {
+    const { ticketId, monthKey } = req.query;
+
+    if (!ticketId || !monthKey) {
+        return res.status(400).json({ error: 'Missing ticketId or monthKey.' });
+    }
+
+    try {
+        const studentId = ticketId.trim().toUpperCase();
+        // 1. Verify student exists
+        const student = await getAttendeeByTicketId(studentId);
+        if (!student) {
+            return res.status(404).json({ error: 'Student Account not found.' });
+        }
+
+        // 2. Fetch ledger details
+        const tuitionMonths = student.tuitionMonths || {
+            "month_1": {
+                "status": student.balance > 0 ? "part" : "paid",
+                "amountPaid": student.amountPaid || 0,
+                "balance": student.balance !== undefined ? student.balance : 0,
+                "lastPaymentRef": student.paystackRef || ""
+            },
+            "month_2": {
+                "status": "unpaid",
+                "amountPaid": 0,
+                "balance": 25000,
+                "lastPaymentRef": ""
+            }
+        };
+
+        const ledger = tuitionMonths[monthKey];
+        if (!ledger) {
+            return res.status(404).json({ error: 'Month ledger details not found.' });
+        }
+
+        if (ledger.status === 'unpaid' || parseFloat(ledger.amountPaid) === 0) {
+            return res.status(400).json({ error: 'No tuition payment found for this month.' });
+        }
+
+        // 3. Generate Receipt PDF
+        const receiptFileName = `tuition-receipt-${student.ticketId}-${monthKey}.pdf`;
+        const receiptPath = path.join(ticketsDir, receiptFileName);
+
+        await generateTuitionReceiptPDF(student, monthKey, ledger, receiptPath);
+
+        // 4. Send file for download
+        const readableMonth = monthKey.replace('_', ' ').toUpperCase();
+        return res.download(receiptPath, `Tuition_Receipt_${readableMonth}_${student.ticketId}.pdf`);
+    } catch (err) {
+        console.error('Download tuition receipt error:', err.message);
+        return res.status(500).json({ error: 'Failed to download tuition receipt.' });
+    }
+});
+
+// Endpoint: Fetch admin analytics and statistics
+app.get('/api/admin/analytics', async (req, res) => {
+    const authHeader = req.headers['authorization'];
+    const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+
+    if (!authHeader || authHeader !== adminPassword) {
+        return res.status(401).json({ error: 'Unauthorized credentials.' });
+    }
+
+    try {
+        const attendees = await getAllAttendees();
+        const purchases = await getAllPurchases();
+
+        let totalTuitionCollected = 0;
+        let totalOutstandingTuition = 0;
+        let physicalStudentsCount = 0;
+        let onlineStudentsCount = 0;
+
+        attendees.forEach(student => {
+            // Count student attendance mode
+            if (student.attendanceMode === 'physical') {
+                physicalStudentsCount++;
+            } else {
+                onlineStudentsCount++;
+            }
+
+            // Calculate tuition months ledger
+            const tuitionMonths = student.tuitionMonths || {
+                "month_1": {
+                    "status": student.balance > 0 ? "part" : "paid",
+                    "amountPaid": student.amountPaid || 0,
+                    "balance": student.balance !== undefined ? student.balance : 0
+                },
+                "month_2": {
+                    "status": "unpaid",
+                    "amountPaid": 0,
+                    "balance": 25000
+                }
+            };
+
+            // Aggregate tuition amounts for all months
+            Object.values(tuitionMonths).forEach(month => {
+                totalTuitionCollected += parseFloat(month.amountPaid || 0);
+                totalOutstandingTuition += parseFloat(month.balance || 0);
+            });
+        });
+
+        // Sum up material sales revenue
+        let totalMaterialSales = 0;
+        purchases.forEach(purchase => {
+            totalMaterialSales += parseFloat(purchase.pricePaid || 0);
+        });
+
+        return res.json({
+            totalTuitionCollected,
+            totalOutstandingTuition,
+            totalMaterialSales,
+            totalStudents: attendees.length,
+            physicalStudents: physicalStudentsCount,
+            onlineStudents: onlineStudentsCount
+        });
+    } catch (err) {
+        console.error('Analytics aggregation error:', err.message);
+        return res.status(500).json({ error: 'Failed to aggregate analytics data.' });
+    }
+});
+
+// Endpoint: Admin Delete product
+app.delete('/api/admin/products/:id', async (req, res) => {
+    const authHeader = req.headers['authorization'];
+    const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+
+    if (!authHeader || authHeader !== adminPassword) {
+        return res.status(401).json({ error: 'Unauthorized credentials.' });
+    }
+
+    const { id } = req.params;
+    try {
+        const product = await getProductById(id);
+        if (!product) {
+            return res.status(404).json({ error: 'Product not found.' });
+        }
+
+        // Remove secure file from disk if it exists (digital products)
+        if (product.fileName) {
+            const filePath = path.join(secureUploadDir, product.fileName);
+            if (fs.existsSync(filePath)) {
+                fs.unlinkSync(filePath);
+            }
+        }
+
+        // Remove record from database
+        await deleteProductFromDb(id);
+
+        return res.json({ success: true, message: 'Product successfully deleted.' });
+    } catch (err) {
+        console.error('Delete product error:', err.message);
+        return res.status(500).json({ error: 'Failed to delete product.' });
     }
 });
 

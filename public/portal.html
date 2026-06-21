@@ -91,6 +91,9 @@
                     <li class="portal-tab" data-tab="notices">
                         <i class="fa-solid fa-bullhorn"></i> Notice Board
                     </li>
+                    <li class="portal-tab" data-tab="products">
+                        <i class="fa-solid fa-store"></i> Student Tools
+                    </li>
                 </ul>
 
                 <!-- TAB 1: Ledger -->
@@ -129,6 +132,21 @@
                     </div>
                 </div>
 
+                <!-- TAB 4: Student Tools (Paid Materials) -->
+                <div class="portal-panel" id="portal-panel-products" style="display: none;">
+                    <div class="portal-resources-list-container">
+                        <h4 style="margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; color: var(--primary-color);">
+                            Student Tools & Revision Materials
+                        </h4>
+                        <p class="text-muted text-sm" style="margin-bottom: 15px;">
+                            Purchase textbooks, handouts, and worksheets published by your instructors. Once purchased, you can download them instantly.
+                        </p>
+                        <div class="portal-resources-grid" id="portal-products-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px;">
+                            <!-- Populated dynamically via JS -->
+                        </div>
+                    </div>
+                </div>
+
                 <div class="portal-actions" style="margin-top: 25px; display: flex; justify-content: space-between; align-items: center; gap: 15px;">
                     <button class="btn btn-ghost" id="portal-exit-btn">
                         <i class="fa-solid fa-arrow-left-long"></i> Exit Portal
@@ -148,6 +166,62 @@
             Need help? Contact <a href="mailto:info@tbosetutors.com" style="text-decoration: underline;">info@tbosetutors.com</a> or message support.
         </p>
     </footer>
+ 
+    <!-- Product Payment Confirmation Modal -->
+    <div class="modal-backdrop" id="product-payment-modal">
+        <div class="modal-card" style="background: var(--card-bg); padding: 30px; border-radius: var(--border-radius-md); max-width: 480px; width: 100%; position: relative; box-shadow: var(--shadow-lg);">
+            <button class="modal-close" id="product-modal-close-btn" style="position: absolute; top: 15px; right: 20px; font-size: 1.5rem; background: none; border: none; cursor: pointer; color: var(--text-secondary);">&times;</button>
+            
+            <!-- Step 1: Confirm Details -->
+            <div id="product-pay-step-details">
+                <div class="text-center" style="margin-bottom: 20px;">
+                    <div style="background-color: var(--accent-light); width: 60px; height: 60px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px auto;">
+                        <i class="fa-solid fa-cart-shopping gold-text" style="font-size: 1.5rem;"></i>
+                    </div>
+                    <h3 style="color: var(--primary-color);">Purchase Material</h3>
+                    <p class="text-muted text-sm" style="margin-top: 5px;">Confirm details to unlock this study resource.</p>
+                </div>
+
+                <div style="background: var(--surface-color); padding: 15px; border-radius: var(--border-radius-sm); margin-bottom: 20px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                        <span class="text-muted text-sm">Material:</span>
+                        <strong id="pay-product-title" style="font-size: 0.95rem;">-</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                        <span class="text-muted text-sm">Type:</span>
+                        <span id="pay-product-type" class="badge badge-accent">-</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-weight: bold; border-top: 1px dashed var(--border-color); padding-top: 10px; margin-top: 10px;">
+                        <span>Amount Due:</span>
+                        <span id="pay-product-price" style="color: var(--primary-color);">₦0</span>
+                    </div>
+                </div>
+
+                <button class="btn btn-gold btn-full btn-large" id="product-pay-confirm-btn">
+                    Pay Now (Simulated) <i class="fa-solid fa-credit-card"></i>
+                </button>
+            </div>
+
+            <!-- Step 2: Processing Payment -->
+            <div id="product-pay-step-loading" style="display: none; text-align: center; padding: 30px 0;">
+                <i class="fa-solid fa-circle-notch fa-spin gold-text" style="font-size: 3rem; margin-bottom: 20px;"></i>
+                <h4 style="color: var(--primary-color);">Processing simulated payment...</h4>
+                <p class="text-muted text-sm" style="margin-top: 8px;">Please do not close this window or refresh the page.</p>
+            </div>
+
+            <!-- Step 3: Success -->
+            <div id="product-pay-step-success" style="display: none; text-align: center; padding: 20px 0;">
+                <div style="background-color: var(--success-color); color: white; width: 65px; height: 65px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px auto; font-size: 2rem; box-shadow: 0 0 15px rgba(22, 163, 74, 0.4);">
+                    <i class="fa-solid fa-check"></i>
+                </div>
+                <h3 style="color: var(--success-color);">Payment Successful!</h3>
+                <p class="text-muted text-sm" style="margin-top: 8px; line-height: 1.5;">Your payment has been successfully recorded. The material has been unlocked for your Ticket ID.</p>
+                <button class="btn btn-gold btn-full" id="product-pay-success-done" style="margin-top: 25px;">
+                    Access Material Now <i class="fa-solid fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- Portal UI Script -->
     <script src="portal.js"></script>

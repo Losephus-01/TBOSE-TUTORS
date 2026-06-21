@@ -119,10 +119,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     `;
                 } else if (month.status === 'part') {
                     actionButtonHtml = `
-                        <button class="btn btn-gold btn-sm pay-sub-btn" data-month="${monthKey}" data-plan="balance" data-amount="12500">Pay Balance (₦12,500)</button>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <button class="btn btn-ghost btn-sm download-tuition-receipt-btn" data-month="${monthKey}"><i class="fa-solid fa-download"></i> Receipt</button>
+                            <button class="btn btn-gold btn-sm pay-sub-btn" data-month="${monthKey}" data-plan="balance" data-amount="12500">Pay Balance (₦12,500)</button>
+                        </div>
                     `;
                 } else {
-                    actionButtonHtml = `<span style="color: var(--success-color); font-weight: bold;"><i class="fa-solid fa-circle-check"></i> Month Completed</span>`;
+                    actionButtonHtml = `
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span style="color: var(--success-color); font-weight: bold;"><i class="fa-solid fa-circle-check"></i> Month Completed</span>
+                            <button class="btn btn-ghost btn-sm download-tuition-receipt-btn" data-month="${monthKey}"><i class="fa-solid fa-download"></i> Receipt</button>
+                        </div>
+                    `;
                 }
 
                 row.innerHTML = `
@@ -181,11 +189,22 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             });
 
+            // Bind click listeners for download tuition receipt buttons
+            document.querySelectorAll('.download-tuition-receipt-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const monthKey = e.currentTarget.getAttribute('data-month');
+                    window.location.href = `/api/tuition/receipt?ticketId=${encodeURIComponent(ticketId)}&monthKey=${encodeURIComponent(monthKey)}`;
+                });
+            });
+
             // Load resource downloads
             loadStudyResources();
             
             // Load announcements notice board
             loadAnnouncements(ticketId);
+
+            // Load paid products
+            loadProducts(ticketId);
 
             // Reset tabs to default (Ledger active)
             portalTabs.forEach(t => t.classList.remove('active'));
@@ -360,5 +379,301 @@ document.addEventListener('DOMContentLoaded', () => {
     // Helper: event tracking
     function trackEvent(eventName, properties = {}) {
         console.log(`[Portal Event Tracked] ${eventName}`, properties);
+    }
+
+    // 7. Student Tools (Paid Materials) Listing & Checkout Flow
+    const portalProductsList = document.getElementById('portal-products-list');
+    const productPaymentModal = document.getElementById('product-payment-modal');
+    const productModalCloseBtn = document.getElementById('product-modal-close-btn');
+    const payProductTitle = document.getElementById('pay-product-title');
+    const payProductType = document.getElementById('pay-product-type');
+    const payProductPrice = document.getElementById('pay-product-price');
+    const productPayConfirmBtn = document.getElementById('product-pay-confirm-btn');
+    const productPaySuccessDone = document.getElementById('product-pay-success-done');
+
+    const productPayStepDetails = document.getElementById('product-pay-step-details');
+    const productPayStepLoading = document.getElementById('product-pay-step-loading');
+    const productPayStepSuccess = document.getElementById('product-pay-step-success');
+
+    let activeProductIdForCheckout = null;
+
+    async function loadProducts(ticketId) {
+        if (!portalProductsList) return;
+        portalProductsList.innerHTML = '<div class="text-center text-muted" style="padding:20px; width:100%;"><i class="fa-solid fa-spinner fa-spin"></i> Loading tools & materials...</div>';
+
+        try {
+            // 1. Fetch all products
+            const prodRes = await fetch('/api/products');
+            if (!prodRes.ok) {
+                portalProductsList.innerHTML = '<div class="text-center text-muted" style="padding:20px; width:100%;">Failed to load tools & materials.</div>';
+                return;
+            }
+            const products = await prodRes.json();
+
+            // 2. Fetch student purchases
+            const purchRes = await fetch(`/api/student/purchases?ticketId=${encodeURIComponent(ticketId)}`);
+            if (!purchRes.ok) {
+                portalProductsList.innerHTML = '<div class="text-center text-muted" style="padding:20px; width:100%;">Failed to retrieve purchase records.</div>';
+                return;
+            }
+            const purchases = await purchRes.json();
+            const purchasedIds = new Set(purchases.map(p => p.productId));
+
+            portalProductsList.innerHTML = '';
+
+            if (products.length === 0) {
+                portalProductsList.innerHTML = `
+                    <div style="grid-column: 1/-1; text-align: center; padding: 40px 20px;" class="text-muted">
+                        <i class="fa-solid fa-cubes" style="font-size: 3rem; margin-bottom: 15px; display: block; opacity: 0.5;"></i>
+                        <p>No extra revision materials are published at the moment.</p>
+                        <p style="font-size: 0.85rem; margin-top: 5px;">Tutors will post textbooks and handouts here when available.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            products.forEach(product => {
+                const card = document.createElement('div');
+                card.className = 'resource-card'; // Reuse resource-card styles for visual consistency
+                card.style.display = 'flex';
+                card.style.flexDirection = 'column';
+                card.style.justifyContent = 'space-between';
+                card.style.height = '100%';
+
+                const isOwned = purchasedIds.has(product.id);
+                const purchase = purchases.find(p => p.productId === product.id);
+                const purchaseId = purchase ? purchase.id : '';
+
+                const badgeText = product.type.toUpperCase();
+                const prettyPrice = `₦${parseFloat(product.price).toLocaleString()}`;
+                const isPhysical = product.deliveryMode === 'physical';
+
+                let actionHtml = '';
+                if (isOwned) {
+                    let downloadBtnHtml = '';
+                    if (!isPhysical) {
+                        downloadBtnHtml = `
+                            <button class="btn btn-gold btn-full download-prod-btn" style="margin-top: 8px; background-color: var(--primary-color); border-color: var(--primary-color); color: white;">
+                                Download Material <i class="fa-solid fa-cloud-arrow-down"></i>
+                            </button>
+                        `;
+                    } else {
+                        downloadBtnHtml = `
+                            <div style="background: var(--surface-color); border-left: 3px solid var(--accent-color); padding: 10px; margin-top: 8px; border-radius: var(--border-radius-sm); font-size: 0.8rem; text-align: left; line-height: 1.4;">
+                                <i class="fa-solid fa-gift gold-text"></i> Show receipt at the Ibadan center to claim this physical item.
+                            </div>
+                        `;
+                    }
+                    actionHtml = `
+                        <button class="btn btn-gold btn-full download-receipt-btn" style="background-color: var(--success-color); border-color: var(--success-color); color: white;">
+                            Download Receipt <i class="fa-solid fa-file-invoice"></i>
+                        </button>
+                        ${downloadBtnHtml}
+                    `;
+                } else {
+                    actionHtml = `
+                        <button class="btn btn-gold btn-full buy-prod-btn">
+                            Buy Now · ${prettyPrice} <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    `;
+                }
+
+                card.innerHTML = `
+                    <div class="resource-info" style="flex-grow: 1; display: flex; flex-direction: column;">
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+                            <div>
+                                <span class="badge badge-accent">${escapeHtml(badgeText)}</span>
+                                <span class="badge" style="background: var(--surface-color); color: var(--text-secondary); margin-left: 4px; font-size: 0.7rem; font-weight: bold; border: 1px solid var(--border-color);">
+                                    <i class="fa-solid ${isPhysical ? 'fa-handshake' : 'fa-download'}"></i> ${escapeHtml((product.deliveryMode || 'digital').toUpperCase())}
+                                </span>
+                            </div>
+                            ${isOwned ? '<span class="status-badge paid" style="font-size: 0.75rem; padding: 4px 8px; border-radius: 12px; background: rgba(22, 163, 74, 0.1); color: var(--success-color); font-weight: bold;"><i class="fa-solid fa-circle-check"></i> Purchased</span>' : ''}
+                        </div>
+                        <h4 style="margin: 8px 0; font-family: var(--font-header); color: var(--primary-color); font-size: 1.15rem;">${escapeHtml(product.title)}</h4>
+                        <p class="text-muted" style="font-size: 0.9rem; margin-bottom: 20px; line-height: 1.5; flex-grow: 1;">${escapeHtml(product.description)}</p>
+                    </div>
+                    <div class="resource-actions" style="margin-top: auto;">
+                        ${actionHtml}
+                    </div>
+                `;
+
+                // Wire up actions
+                if (isOwned) {
+                    const receiptBtn = card.querySelector('.download-receipt-btn');
+                    if (receiptBtn) {
+                        receiptBtn.addEventListener('click', () => {
+                            window.location.href = `/api/purchases/${purchaseId}/receipt?ticketId=${encodeURIComponent(ticketId)}`;
+                        });
+                    }
+
+                    const downloadBtn = card.querySelector('.download-prod-btn');
+                    if (downloadBtn) {
+                        downloadBtn.addEventListener('click', () => {
+                            window.location.href = `/api/products/${product.id}/download?ticketId=${encodeURIComponent(ticketId)}`;
+                        });
+                    }
+                } else {
+                    const buyBtn = card.querySelector('.buy-prod-btn');
+                    if (buyBtn) {
+                        buyBtn.addEventListener('click', () => {
+                            openProductCheckout(product);
+                        });
+                    }
+                }
+
+                portalProductsList.appendChild(card);
+            });
+
+        } catch (err) {
+            console.error('Error rendering products:', err);
+            portalProductsList.innerHTML = '<div class="text-center text-muted" style="padding:20px; width:100%;">Connection error loading student tools.</div>';
+        }
+    }
+
+    function openProductCheckout(product) {
+        activeProductIdForCheckout = product.id;
+
+        payProductTitle.textContent = product.title;
+        payProductType.textContent = product.type.toUpperCase();
+        payProductPrice.textContent = `₦${parseFloat(product.price).toLocaleString()}`;
+
+        // Reset steps
+        productPayStepDetails.style.display = 'block';
+        productPayStepLoading.style.display = 'none';
+        productPayStepSuccess.style.display = 'none';
+        if (productModalCloseBtn) productModalCloseBtn.style.visibility = 'visible';
+
+        productPaymentModal.classList.add('active');
+        trackEvent('Open Product Checkout', { productId: product.id, price: product.price });
+    }
+
+    function closeProductCheckout() {
+        productPaymentModal.classList.remove('active');
+        activeProductIdForCheckout = null;
+        if (productModalCloseBtn) productModalCloseBtn.style.visibility = 'visible';
+    }
+
+    if (productModalCloseBtn) {
+        productModalCloseBtn.addEventListener('click', closeProductCheckout);
+    }
+
+    if (productPayConfirmBtn) {
+        productPayConfirmBtn.addEventListener('click', async () => {
+            if (!activeProductIdForCheckout) return;
+
+            if (productModalCloseBtn) productModalCloseBtn.style.visibility = 'hidden';
+            productPayStepDetails.style.display = 'none';
+            productPayStepLoading.style.display = 'block';
+
+            const ticketId = portalSearchInput.value.trim();
+
+            /*
+            // ==========================================
+            // REAL PAYSTACK PAYMENT GATEWAY INTEGRATION
+            // ==========================================
+            // To activate real payment, uncomment this block and remove the simulation block below.
+            
+            // Fetch student's email from logged-in session (e.g. portalUserPhoneEmail)
+            const studentEmail = portalUserPhoneEmail.textContent.split(' · ')[1] || 'student@example.com';
+            
+            initPaystackPayment(
+                studentEmail,
+                product.price, // Make sure product metadata is accessible in scope
+                async function(response) {
+                    try {
+                        const res = await fetch('/api/products/purchase', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                ticketId,
+                                productId: activeProductIdForCheckout,
+                                reference: response.reference
+                            })
+                        });
+                        
+                        if (!res.ok) {
+                            const errData = await res.json();
+                            alert(`Verification failed: ${errData.error}`);
+                            if (productModalCloseBtn) productModalCloseBtn.style.visibility = 'visible';
+                            productPayStepDetails.style.display = 'block';
+                            productPayStepLoading.style.display = 'none';
+                            return;
+                        }
+                        
+                        if (productModalCloseBtn) productModalCloseBtn.style.visibility = 'visible';
+                        productPayStepLoading.style.display = 'none';
+                        productPayStepSuccess.style.display = 'block';
+                    } catch (err) {
+                        console.error(err);
+                        alert('Connection error confirming payment.');
+                        if (productModalCloseBtn) productModalCloseBtn.style.visibility = 'visible';
+                        productPayStepDetails.style.display = 'block';
+                        productPayStepLoading.style.display = 'none';
+                    }
+                },
+                function() {
+                    // Closed popup
+                    if (productModalCloseBtn) productModalCloseBtn.style.visibility = 'visible';
+                    productPayStepDetails.style.display = 'block';
+                    productPayStepLoading.style.display = 'none';
+                }
+            );
+            */
+
+            // SIMULATED PAYMENT PROCESS (Bypassing Paystack)
+            try {
+                // Simulate network latency for payment processing
+                await new Promise(resolve => setTimeout(resolve, 1500));
+
+                const res = await fetch('/api/products/purchase', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        ticketId,
+                        productId: activeProductIdForCheckout,
+                        reference: 'mock_ref_prod_' + Date.now()
+                    })
+                });
+
+                if (!res.ok) {
+                    const errData = await res.json();
+                    alert(`Purchase failed: ${errData.error || 'Unknown error.'}`);
+                    if (productModalCloseBtn) productModalCloseBtn.style.visibility = 'visible';
+                    productPayStepDetails.style.display = 'block';
+                    productPayStepLoading.style.display = 'none';
+                    return;
+                }
+
+                // Show success step
+                if (productModalCloseBtn) productModalCloseBtn.style.visibility = 'visible';
+                productPayStepLoading.style.display = 'none';
+                productPayStepSuccess.style.display = 'block';
+                trackEvent('Product Purchased Successfully', { productId: activeProductIdForCheckout });
+            } catch (err) {
+                console.error(err);
+                alert('Connection error confirming payment.');
+                if (productModalCloseBtn) productModalCloseBtn.style.visibility = 'visible';
+                productPayStepDetails.style.display = 'block';
+                productPayStepLoading.style.display = 'none';
+            }
+        });
+    }
+
+    if (productPaySuccessDone) {
+        productPaySuccessDone.addEventListener('click', () => {
+            const ticketId = portalSearchInput.value.trim();
+            closeProductCheckout();
+            loadProducts(ticketId);
+        });
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
     }
 });

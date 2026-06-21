@@ -57,6 +57,9 @@
                 <li class="admin-tab" data-tab="messaging">
                     <i class="fa-solid fa-bullhorn"></i> Announcements
                 </li>
+                <li class="admin-tab" data-tab="products">
+                    <i class="fa-solid fa-store"></i> Student Tools
+                </li>
                 <li class="admin-mobile-back">
                     <a href="/" style="color: inherit; display: flex; align-items: center; gap: 12px; width: 100%;">
                         <i class="fa-solid fa-arrow-left"></i> Back to Main Site
@@ -117,6 +120,9 @@
                 <li class="admin-tab" data-tab="messaging">
                     <i class="fa-solid fa-bullhorn"></i> Announcements
                 </li>
+                <li class="admin-tab" data-tab="products">
+                    <i class="fa-solid fa-store"></i> Student Tools
+                </li>
             </ul>
         </aside>
 
@@ -129,6 +135,30 @@
                     <button class="btn btn-gold" id="export-csv-btn">
                         <i class="fa-solid fa-file-csv"></i> Export CSV Roster
                     </button>
+                </div>
+
+                <!-- Analytics Cards Dashboard -->
+                <div class="analytics-grid" id="analytics-grid" style="display: none;">
+                    <div class="analytics-card">
+                        <span class="card-title"><i class="fa-solid fa-money-bill-wave" style="color: var(--primary-color); margin-right: 5px;"></i> Tuition Collected</span>
+                        <div class="card-value" id="stat-tuition-collected">₦0</div>
+                        <span class="card-subtext">Cumulative course fees received</span>
+                    </div>
+                    <div class="analytics-card alert-card">
+                        <span class="card-title"><i class="fa-solid fa-circle-exclamation" style="color: #DC2626; margin-right: 5px;"></i> Outstanding Balances</span>
+                        <div class="card-value" id="stat-tuition-outstanding">₦0</div>
+                        <span class="card-subtext">Pending installment collections</span>
+                    </div>
+                    <div class="analytics-card">
+                        <span class="card-title"><i class="fa-solid fa-book" style="color: var(--gold-color); margin-right: 5px;"></i> Material Sales</span>
+                        <div class="card-value" id="stat-material-sales">₦0</div>
+                        <span class="card-subtext">Handouts & books revenue</span>
+                    </div>
+                    <div class="analytics-card">
+                        <span class="card-title"><i class="fa-solid fa-user-graduate" style="color: var(--success-color); margin-right: 5px;"></i> Total Students</span>
+                        <div class="card-value" id="stat-total-roster">0</div>
+                        <span class="card-subtext" id="stat-roster-breakdown">0 Physical · 0 Online</span>
+                    </div>
                 </div>
 
                 <!-- Filters -->
@@ -351,6 +381,101 @@
                             <button class="btn btn-ghost btn-sm" id="see-more-announcements-btn">
                                 See More <i class="fa-solid fa-chevron-down"></i>
                             </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 5: STUDENT TOOLS (PAID PRODUCTS) -->
+            <section class="admin-tab-panel" id="panel-products">
+                <div class="panel-header">
+                    <h2>Student Tools (Paid Materials)</h2>
+                    <span class="text-muted text-sm">Upload paid textbooks, handouts, and revision materials.</span>
+                </div>
+
+                <div class="admin-grid" style="display: grid; grid-template-columns: 1fr; gap: 24px; margin-top: 20px;">
+                    <!-- Create Product Form Card -->
+                    <div class="admin-card">
+                        <div class="card-header">
+                            <h3><i class="fa-solid fa-plus gold-text"></i> Publish New Paid Material</h3>
+                        </div>
+                        <form id="admin-product-upload-form" class="admin-form" style="margin-top: 15px;">
+                            <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px;">
+                                <div class="form-group">
+                                    <label for="product-title">Material Title</label>
+                                    <div class="input-wrapper">
+                                        <i class="fa-solid fa-book input-icon"></i>
+                                        <input type="text" id="product-title" placeholder="e.g. UTME Physics Revision Guide" required>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="product-type">Material Type</label>
+                                    <div class="select-wrapper">
+                                        <select id="product-type" required>
+                                            <option value="textbook">Textbook / Book</option>
+                                            <option value="handout">Handout / Study Guide</option>
+                                            <option value="resource">Past Questions / Solution Sheet</option>
+                                            <option value="other">Other Reference Material</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="product-delivery">Delivery Mode</label>
+                                    <div class="select-wrapper">
+                                        <select id="product-delivery" required>
+                                            <option value="digital">Digital (File Download)</option>
+                                            <option value="physical">Physical (In-Person Collection)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 15px;">
+                                <div class="form-group">
+                                    <label for="product-price">Price (₦ - Naira)</label>
+                                    <div class="input-wrapper">
+                                        <i class="fa-solid fa-naira-sign input-icon"></i>
+                                        <input type="number" id="product-price" placeholder="e.g. 3500" min="0" required>
+                                    </div>
+                                </div>
+                                <div class="form-group" id="product-file-container">
+                                    <label for="product-file">Upload Material File (PDF, DOCX, ZIP)</label>
+                                    <input type="file" id="product-file" style="border: 1px solid var(--border-color); padding: 8px; border-radius: var(--border-radius-sm); width: 100%;" required>
+                                </div>
+                            </div>
+                            <div class="form-group" style="margin-top: 15px;">
+                                <label for="product-description">Material Description</label>
+                                <textarea id="product-description" rows="3" placeholder="Briefly explain what is included in this revision guide..." required style="width: 100%; padding: 10px; border-radius: var(--border-radius-sm); border: 1px solid var(--border-color); font-family: var(--font-body); font-size: 0.95rem; resize: vertical;"></textarea>
+                            </div>
+                            <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
+                                <button type="submit" class="btn btn-gold" id="product-upload-btn">
+                                    Publish Material <i class="fa-solid fa-cloud-arrow-up"></i>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Products Table Card -->
+                    <div class="admin-card">
+                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h3><i class="fa-solid fa-list gold-text"></i> Published Materials</h3>
+                            <span class="badge badge-accent" id="products-count-badge">0 Materials</span>
+                        </div>
+                        <div class="table-responsive" style="margin-top: 10px;">
+                            <table class="db-table" style="width: 100%; border-collapse: collapse; text-align: left;">
+                                <thead>
+                                    <tr>
+                                        <th style="padding: 12px; border-bottom: 2px solid var(--border-color);">Title</th>
+                                        <th style="padding: 12px; border-bottom: 2px solid var(--border-color);">Type</th>
+                                        <th style="padding: 12px; border-bottom: 2px solid var(--border-color);">Price</th>
+                                        <th style="padding: 12px; border-bottom: 2px solid var(--border-color);">Date Published</th>
+                                        <th style="padding: 12px; border-bottom: 2px solid var(--border-color);" class="text-center">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-products-list">
+                                    <!-- Dynamic rows -->
+                                    <tr><td colspan="5" class="text-center text-muted" style="padding: 15px;">No products published.</td></tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
