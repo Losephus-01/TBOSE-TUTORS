@@ -46,17 +46,8 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-// Secure Multer storage setup for paid products
-const secureStorage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, secureUploadDir);
-    },
-    filename: (req, file, cb) => {
-        const safeName = file.originalname.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-        cb(null, Date.now() + '-' + safeName);
-    }
-});
-const secureUpload = multer({ storage: secureStorage });
+// Secure Multer storage setup for paid products (uses Memory Storage for Firebase/Serverless compatibility)
+const secureUpload = multer({ storage: multer.memoryStorage() });
 
 // Middleware
 app.use(cors());
@@ -91,24 +82,28 @@ const serviceAccountPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
 if (serviceAccountJson) {
     try {
         const serviceAccount = JSON.parse(serviceAccountJson);
+        const bucketName = process.env.FIREBASE_STORAGE_BUCKET || `${serviceAccount.project_id}.appspot.com`;
         admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount)
+            credential: admin.credential.cert(serviceAccount),
+            storageBucket: bucketName
         });
         db = admin.firestore();
         isFirebaseConnected = true;
-        console.log('✔ Connected to Firebase Firestore Database successfully using service account JSON string.');
+        console.log(`✔ Connected to Firebase Firestore & Storage (${bucketName}) successfully using service account JSON string.`);
     } catch (err) {
         console.error('❌ Failed to initialize Firebase from service account JSON string:', err.message);
     }
 } else if (serviceAccountPath && fs.existsSync(serviceAccountPath)) {
     try {
         const serviceAccount = require(path.resolve(serviceAccountPath));
+        const bucketName = process.env.FIREBASE_STORAGE_BUCKET || `${serviceAccount.project_id}.appspot.com`;
         admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount)
+            credential: admin.credential.cert(serviceAccount),
+            storageBucket: bucketName
         });
         db = admin.firestore();
         isFirebaseConnected = true;
-        console.log('✔ Connected to Firebase Firestore Database successfully from key file.');
+        console.log(`✔ Connected to Firebase Firestore & Storage (${bucketName}) successfully from key file.`);
     } catch (err) {
         console.error('❌ Failed to initialize Firebase from key file:', err.message);
     }
@@ -1346,19 +1341,11 @@ app.post('/api/admin/products', secureUpload.single('file'), async (req, res) =>
     const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
 
     if (!authHeader || authHeader !== adminPassword) {
-        // Clean up file if unauthorized
-        if (req.file && fs.existsSync(req.file.path)) {
-            fs.unlinkSync(req.file.path);
-        }
         return res.status(401).json({ error: 'Unauthorized credentials.' });
     }
 
     const { title, description, type, price, deliveryMode } = req.body;
     if (!title || !description || !type || !price || !deliveryMode) {
-        // Clean up file if missing fields
-        if (req.file && fs.existsSync(req.file.path)) {
-            fs.unlinkSync(req.file.path);
-        }
         return res.status(400).json({ error: 'Missing required product parameters.' });
     }
 
@@ -1371,10 +1358,25 @@ app.post('/api/admin/products', secureUpload.single('file'), async (req, res) =>
         const parsedPrice = parseFloat(price);
 
         if (isNaN(parsedPrice) || parsedPrice < 0) {
-            if (req.file && fs.existsSync(req.file.path)) {
-                fs.unlinkSync(req.file.path);
-            }
             return res.status(400).json({ error: 'Price must be a valid positive number.' });
+        }
+
+        let finalFileName = null;
+        if (deliveryMode === 'digital' && req.file) {
+            finalFileName = Date.now() + '-' + req.file.originalname.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+            
+            if (isFirebaseConnected && db) {
+                // Upload to Firebase Storage bucket
+                const bucket = admin.storage().bucket();
+                const fileRef = bucket.file(`secure_uploads/${finalFileName}`);
+                await fileRef.save(req.file.buffer, {
+                    metadata: { contentType: req.file.mimetype }
+                });
+            } else {
+                // Local disk storage fallback
+                const filePath = path.join(secureUploadDir, finalFileName);
+                fs.writeFileSync(filePath, req.file.buffer);
+            }
         }
 
         const productRecord = {
@@ -1384,7 +1386,7 @@ app.post('/api/admin/products', secureUpload.single('file'), async (req, res) =>
             type: type.trim(),
             deliveryMode: deliveryMode.trim(),
             price: parsedPrice,
-            fileName: req.file ? req.file.filename : null,
+            fileName: finalFileName,
             createdAt: new Date().toISOString()
         };
 
@@ -1392,9 +1394,6 @@ app.post('/api/admin/products', secureUpload.single('file'), async (req, res) =>
         return res.status(200).json({ success: true, product: productRecord });
     } catch (err) {
         console.error('Product save error:', err.message);
-        if (req.file && fs.existsSync(req.file.path)) {
-            fs.unlinkSync(req.file.path);
-        }
         return res.status(500).json({ error: 'Database save error.' });
     }
 });
@@ -1508,13 +1507,27 @@ app.get('/api/products/:id/download', async (req, res) => {
             return res.status(404).json({ error: 'Product file not found.' });
         }
 
-        const filePath = path.join(secureUploadDir, product.fileName);
-        if (!fs.existsSync(filePath)) {
-            return res.status(404).json({ error: 'Product file not found on server.' });
-        }
+        // 3. Serve file from Firebase Storage or Local Disk
+        if (isFirebaseConnected && db) {
+            const bucket = admin.storage().bucket();
+            const fileRef = bucket.file(`secure_uploads/${product.fileName}`);
+            const [exists] = await fileRef.exists();
+            if (!exists) {
+                return res.status(404).json({ error: 'Product file not found in storage.' });
+            }
 
-        // 3. Send file
-        return res.download(filePath, product.title + path.extname(product.fileName));
+            const [metadata] = await fileRef.getMetadata();
+            res.setHeader('Content-Disposition', `attachment; filename="${product.title}${path.extname(product.fileName)}"`);
+            res.setHeader('Content-Type', metadata.contentType || 'application/octet-stream');
+            
+            return fileRef.createReadStream().pipe(res);
+        } else {
+            const filePath = path.join(secureUploadDir, product.fileName);
+            if (!fs.existsSync(filePath)) {
+                return res.status(404).json({ error: 'Product file not found on server.' });
+            }
+            return res.download(filePath, product.title + path.extname(product.fileName));
+        }
     } catch (err) {
         console.error('Download product error:', err.message);
         return res.status(500).json({ error: 'Failed to download product.' });
@@ -1716,11 +1729,20 @@ app.delete('/api/admin/products/:id', async (req, res) => {
             return res.status(404).json({ error: 'Product not found.' });
         }
 
-        // Remove secure file from disk if it exists (digital products)
+        // Remove secure file from storage/disk if it exists (digital products)
         if (product.fileName) {
-            const filePath = path.join(secureUploadDir, product.fileName);
-            if (fs.existsSync(filePath)) {
-                fs.unlinkSync(filePath);
+            if (isFirebaseConnected && db) {
+                const bucket = admin.storage().bucket();
+                const fileRef = bucket.file(`secure_uploads/${product.fileName}`);
+                const [exists] = await fileRef.exists();
+                if (exists) {
+                    await fileRef.delete();
+                }
+            } else {
+                const filePath = path.join(secureUploadDir, product.fileName);
+                if (fs.existsSync(filePath)) {
+                    fs.unlinkSync(filePath);
+                }
             }
         }
 
